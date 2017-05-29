@@ -22,27 +22,8 @@ const redmineReducer = (state = {
 	issues: [],
 	issue: {},
 	statuses: [],
-	lastTextComment: {},
-	lastAssignee: {},
-	assignees: [],
 }, action) => {
 	switch (action.type) {
-		case 'ADD_ASSIGNEE':
-			return {
-				...state,
-				assignees: [...state.assignees, action.payload],
-			}
-			/*
-			return Object.assign({}, state, {
-				assignees: [...state.assignees, action.payload],
-			})
-			*/
-		case 'RESET_ASSIGNEES':  return Object.assign({}, state, {
-			assignees: [],
-		})
-		case 'SET_ASSIGNEES':  return Object.assign({}, state, {
-			assignees: action.payload,
-		})
 		case 'SET_ISSUES': return Object.assign({}, state, {
 			issues: action.payload,
 		})
@@ -51,12 +32,6 @@ const redmineReducer = (state = {
 		})
 		case 'SET_STATUSES': return Object.assign({}, state, {
 			statuses: action.payload,
-		})
-		case 'SET_LAST_ASSIGNEE':  return Object.assign({}, state, {
-			lastAssignee: action.payload,
-		})
-		case 'SET_LAST_COMMENT':  return Object.assign({}, state, {
-			lastTextComment: action.payload,
 		})
 		default: return state
 	}

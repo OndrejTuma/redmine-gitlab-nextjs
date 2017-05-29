@@ -1,6 +1,5 @@
 import { Component } from 'react'
 import Layout from '../components/Layout'
-import fetch from 'isomorphic-fetch'
 
 import { systems } from '../consts'
 import { nextConnect } from '../store'
@@ -15,42 +14,64 @@ class Task extends Component {
 		dispatch(fetchIssue(id))
 	}
 
+	getAllAssignees (issue) {
+		const { journals } = issue
+
+		if (!journals || !journals.length) {
+			return
+		}
+
+		let seen = {}
+		return journals.map((journal) => {
+			return journal.user
+		}).filter(journal => seen.hasOwnProperty(journal.id) ? false : (seen[journal.id] = true))
+
+		/*
+		for(let i = journals.length; i--;) {
+			if (
+				journals[i].details.length &&
+				journals[i].details[0].name == 'assigned_to_id' &&
+				!assignees[journals[i].user.id]
+			) {
+				console.log('getAllAssignees add:', journals[i].user);
+				assignees[journals[i].user.id] = journals[i].user.name
+			}
+		}
+		// in case author is not yet included
+		if (!assignees[issue.author.id]) {
+			assignees[issue.author.id] = issue.author.name
+		}
+		return assignees
+		*/
+	}
+	getLastTextComment (issue) {
+		const { journals } = issue
+		if (journals) {
+			for(let i = journals.length; i--;) {
+				if (journals[i].notes) {
+					return journals[i]
+				}
+			}
+		}
+		return
+	}
 	hidePingForm () {
 		this.textarea.value = ''
 		this.updateForm.style.display = 'none'
 	}
-	pingBackTo(user, comment = '') {
-		const { issue: { id } } = this.props
+	pingBackTo(userId, comment = '') {
+		const { issue: { id }, dispatch } = this.props
 
 		return REST.rm(`issues/${id}.json`, () => {
+			dispatch(fetchIssue(id))
 			this.updateForm.style.display = 'none'
 			this.textarea.value = ''
 		}, 'PUT', {
 			issue: {
-				assigned_to_id : user.id,
-				notes: comment
+				assigned_to_id: userId,
+				notes: comment,
 			}
 		})
-
-		fetch(`${systems.redmine.url}issues/${this.props.issue.id}.json`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				key: systems.redmine.auth,
-				issue: {
-					assigned_to_id : user.id,
-					notes: comment
-				}
-			}),
-		})
-			.then(data => {
-				this.updateForm.style.display = 'none'
-				this.textarea.value = ''
-				//return data.json()
-			})
-			.catch(err => console.log(err))
 	}
 	showPingForm () {
 		this.updateForm.style.display = 'block'
@@ -63,10 +84,13 @@ class Task extends Component {
 	}
 
 	render() {
-		const { issue, statuses, lastTextComment, assignees } = this.props
+		const { issue, statuses } = this.props
 
 		if (issue && Object.keys(issue).length) {
 			let { status: { name, id: status_id } } = issue
+			let lastTextComment = this.getLastTextComment(issue)
+			let assignees = this.getAllAssignees(issue)
+
 			return (
 				<Layout>
 					<div>
@@ -85,15 +109,15 @@ class Task extends Component {
 						}}>Ping task</button>
 						<div ref={updateForm => this.updateForm = updateForm} style={{ display: 'none' }}>
 							<small>Back to:</small>
-							<select ref={select => this.assignTo = select} defaultValue={issue.assignees ? issue.assignees[0].id : ``}>
-								{assignees && assignees.map((assignee, i) => (
-									<option value={assignee.id} key={i}>{assignee.firstname} {assignee.lastname}</option>
+							<select ref={select => this.assignTo = select} defaultValue={assignees && assignees.length ? assignees.slice(-1)[0].id : ``}>
+								{assignees && assignees.map((assignee) => (
+									<option value={assignee.id} key={assignee.id}>{assignee.name}</option>
 								))}
 							</select>
 							<br/>
 							<textarea ref={textarea => this.textarea = textarea } placeholder={`Comment`}></textarea>
 							<br/>
-							<button onClick={() => this.pingBackTo(issue.assignees ? issue.assignees[0].id : assignees[0].id, this.textarea.value)}>Update</button>
+							<button onClick={() => this.pingBackTo(this.assignTo.value, this.textarea.value)}>Update</button>
 						</div>
 					</div>
 					<h1 style={{ clear: 'both' }}><a href={`${systems.redmine.url}issues/${issue.id}`} target="_blank">{issue.subject}</a></h1>
@@ -115,10 +139,6 @@ class Task extends Component {
 }
 
 export default nextConnect(state => ({
-	userId: state.global.userId,
 	issue: state.redmine.issue,
-	status: state.redmine.status,
 	statuses: state.redmine.statuses,
-	assignees: state.redmine.assignees,
-	lastTextComment: state.redmine.lastTextComment,
 }))(Task)

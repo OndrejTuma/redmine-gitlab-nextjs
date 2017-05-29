@@ -30,39 +30,34 @@ export const setGitlabUser = userId => dispatch => dispatch({ type: 'SET_GITLAB_
 export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })
 
 /* ============================= REDMINE REDUCER ACTIONS ============================= */
-export const fetchIssues = userId => dispatch => restFetch(
-	`${systems.redmine.url}issues.json?key=${systems.redmine.auth}&assigned_to_id=${userId}`,
-	response => dispatch({ type: 'SET_ISSUES', payload: response.issues })
+export const fetchIssues = userId => dispatch => REST.rm(
+	`issues.json`,
+	response => dispatch({ type: 'SET_ISSUES', payload: response.issues }),
+	'GET',
+	{ assigned_to_id: userId }
 )
 export const addIssue = issue => dispatch => dispatch({ type: 'ADD_ISSUE', payload: issue })
 export const fetchIssue = (id, callback) => dispatch => REST.rm(
 	`issues/${id}.json?include=journals,attachments`,
 	data => {
 		dispatch({ type: 'SET_ISSUE', payload: data.issue })
-		dispatch(setLastAssignee(getLastAssignee(data.issue)))
-		dispatch(setLastComment(getLastTextComment(data.issue)))
-		dispatch(setAllAssignees(getAllAssignees(data.issue)))
+		// dispatch(setAllAssignees(getAllAssignees(data.issue)))
 	}
 )
-export const setStatuses = () => dispatch => restFetch(
-	`${systems.redmine.url}issue_statuses.json?key=${systems.redmine.auth}`,
-	data => {
-		return dispatch({
-			type: 'SET_STATUSES',
-			payload: data.issue_statuses.reduce((result, status) => {
-				if (systems.redmine.allowedIssueStatuses.indexOf(status.id) >= 0) {
-					result.push(status)
-				}
-				return result
-			}, [])
-		})
-	}
+export const setStatuses = () => dispatch => REST.rm(
+	`issue_statuses.json`,
+	data => dispatch({
+		type: 'SET_STATUSES',
+		payload: data.issue_statuses.reduce((result, status) => {
+			if (systems.redmine.allowedIssueStatuses.indexOf(status.id) >= 0) {
+				result.push(status)
+			}
+			return result
+		}, [])
+	})
 )
+/*
 export const resetAssignees = () => dispatch => dispatch({ type: 'RESET_ASSIGNEES' })
-export const setLastAssignee = userId => dispatch => restFetch(
-	`${systems.redmine.url}users/${userId}.json?key=${systems.redmine.auth}`,
-	data => dispatch({ type: 'SET_LAST_ASSIGNEE', payload: data.user })
-)
 export const setAllAssignees = userIds => dispatch => {
 	dispatch(resetAssignees())
 	return userIds.map(userId => {
@@ -85,8 +80,9 @@ export const setAllAssignees = userIds => dispatch => {
 		})
 	})
 	*/
+/*
 }
-export const setLastComment = comment => dispatch => dispatch({ type: 'SET_LAST_COMMENT', payload: comment })
+*/
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
 export const setBoards = (onlyForUserId = 0) => dispatch => restFetch(
@@ -110,49 +106,3 @@ const fillBoardWithIssues = (label, onlyForUserId) => dispatch => restFetch(
 	}
 )
 export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })
-
-
-/* ============================= OTHER ============================= */
-const getLastAssignee = (issue) => {
-	const { journals } = issue
-	if (journals) {
-		for(let i = journals.length; i--;) {
-			if (journals[i].details.length && journals[i].details[0].name == 'assigned_to_id') {
-				return journals[i].details[0].old_value;
-			}
-		}
-	}
-	return issue.author.id
-}
-const getAllAssignees = (issue) => {
-	const { journals } = issue
-	let assignees = []
-
-	if (journals) {
-		for(let i = journals.length; i--;) {
-			if (
-				journals[i].details.length &&
-				journals[i].details[0].name == 'assigned_to_id' &&
-				assignees.indexOf(parseInt(journals[i].details[0].old_value)) < 0
-			) {
-				assignees.push(parseInt(journals[i].details[0].old_value))
-			}
-		}
-	}
-	// in case author is not yet included
-	if (assignees.indexOf(issue.author.id) < 0) {
-		assignees.push(issue.author.id)
-	}
-	return assignees
-}
-const getLastTextComment = (issue) => {
-	const { journals } = issue
-	if (journals) {
-		for(let i = journals.length; i--;) {
-			if (journals[i].notes) {
-				return journals[i];
-			}
-		}
-	}
-	return false
-}

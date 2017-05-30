@@ -38,7 +38,7 @@ const redmineReducer = (state = {
 }
 const gitlabReducer = (state = {
 	boards: [],
-	boardLists: {},
+	issues: [],
 	myTasksOnly: true,
 }, action) => {
 	switch (action.type) {
@@ -48,12 +48,9 @@ const gitlabReducer = (state = {
 		case 'SET_BOARDS': return Object.assign({}, state, {
 			boards: action.payload,
 		})
-		case 'SET_BOARDS_ISSUES':
-			let boardLists = Object.assign({}, state.boardLists)
-			boardLists[action.label] = action.payload
-			return Object.assign({}, state, {
-				boardLists: boardLists,
-			})
+		case 'SET_GITLAB_ISSUES': return Object.assign({}, state, {
+			issues: action.payload,
+		})
 		default: return state
 	}
 }

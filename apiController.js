@@ -1,5 +1,6 @@
 import { systems } from './consts'
 import fetch from 'isomorphic-fetch'
+import { fetchGitlabIssues } from './redux/actions'
 
 export const REST = {
 	rm: (resource, callback, method, data) => {
@@ -16,6 +17,62 @@ export const REST = {
 		return restFetch(`${systems.timedoctor.url}${resource}`, callback, method, Object.assign({
 			access_token: systems.timedoctor.auth,
 		}, data))
+	},
+}
+
+export const GitLab = {
+	updateGitlabIssue: (gitlabEditWrapper, dispatch, issueIid, nonBoardLabels, boardLabel, assigneeId, comment = ``) => {
+		let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
+		labels.push(boardLabel)
+
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
+			gitlabEditWrapper.style.display = 'none'
+			if (comment) {
+				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issueIid}/notes`, () => {
+					dispatch(fetchGitlabIssues())
+				}, 'POST', {
+					body: comment
+				})
+			}
+			else {
+				dispatch(fetchGitlabIssues())
+			}
+		}, 'PUT', {
+			issue_iid: issueIid,
+			assignee_id: assigneeId,
+			labels: labels.join(','),
+		})
+	},
+	_getGitlabUserById: (redmineUserId, redmineUsers, gitlabUsers) => {
+		let userName = redmineUsers.reduce((result, user) => {
+			if (result.id == redmineUserId) {
+				return result.name
+			}
+			if (user.id == redmineUserId) {
+				return user.name
+			}
+			return result
+		}, redmineUsers[0])
+		for (let i in gitlabUsers) {
+			if (gitlabUsers[i].name == userName) {
+				return gitlabUsers[i]
+			}
+		}
+		return {}
+	},
+	getGitlabLabelByRedmineStatusId: (rmStatusId, mapGitlabStatusToRedmine, boards) => {
+		let gitlabBoardId = 0
+		for (let glId in mapGitlabStatusToRedmine) {
+			if (rmStatusId == mapGitlabStatusToRedmine[glId]) {
+				gitlabBoardId = glId
+				break
+			}
+		}
+		for (let i in boards) {
+			if (boards[i].id == gitlabBoardId) {
+				return boards[i].label.name
+			}
+		}
 	},
 }
 
@@ -36,7 +93,7 @@ const restFetch = (url, callback, method = `GET`, data) => {
 	})
 		.then(
 			response => {
-				//console.log('REST fetch response', response);
+				//console.log('REST fetch response', response, response.json());
 				if (!response.ok) {
 					alert(`Fetch on url ( ${response.url} ) failed: ${response.status} - ${response.statusText}`)
 				}

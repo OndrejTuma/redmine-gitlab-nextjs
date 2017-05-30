@@ -62,26 +62,18 @@ export const setAllAssignees = userIds => dispatch => {
 */
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
-export const setBoards = (onlyForUserId = 0) => dispatch => REST.gl(
+export const setBoards = () => dispatch => REST.gl(
 	`projects/${systems.gitlab.projectId}/boards`,
 	data => {
-		if (data[0]) {
+		if (data && data.length) {
 			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
-			data[0].lists.map(list => dispatch(fillBoardWithIssues(list.label.name, onlyForUserId)))
 		}
 	},
 )
-const fillBoardWithIssues = (label, onlyForUserId) => dispatch => REST.gl(
-	`groups/02/issues/?labels=${label}`,
-	data => dispatch({
-		type: 'SET_BOARDS_ISSUES',
-		payload: onlyForUserId ? data.reduce((result, issue) => {
-			if (issue.assignee && issue.assignee.id == onlyForUserId) {
-				result.push(issue)
-			}
-			return result
-		}, []) : data,
-		label
-	})
+export const fetchGitlabIssues = () => dispatch => REST.gl(
+	`groups/02/issues?state=opened&per_page=100`,
+	response => {
+		dispatch({ type: 'SET_GITLAB_ISSUES', payload: response })
+	},
 )
 export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })

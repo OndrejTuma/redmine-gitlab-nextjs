@@ -7,18 +7,19 @@ import getSlug from 'speakingurl'
 import Layout from '../components/Layout'
 
 import { mapGitlabStatusToRedmine, systems } from '../consts'
-import { REST } from '../apiController'
+import { REST, GitLab } from '../apiController'
 import { nextConnect } from '../store'
-import { setUser, fetchIssues, setBoards, toggleMyTasksOnly, setGitlabUser } from '../redux/actions'
+import { setUser, fetchIssues, setBoards, fetchGitlabIssues, toggleMyTasksOnly, setGitlabUser } from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
 class Index extends React.Component {
 	componentDidMount () {
-		const { userId, gitlabUserId, myTasksOnly } = this.props
+		const { dispatch, userId } = this.props
 
-		this.props.dispatch(fetchIssues(userId))
-		this.props.dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
+		dispatch(fetchIssues(userId))
+		dispatch(setBoards())
+		dispatch(fetchGitlabIssues())
 
 		/* potrebuju si vytvorit novy projekt (intergrace) - potrebuju admin prava
 		restFetch(`${systems.timedoctor.url}companies/${systems.timedoctor.companyId}/users/${systems.timedoctor.users[0].id}/tasks?access_token=${systems.timedoctor.auth}`, (data) => {
@@ -38,11 +39,11 @@ class Index extends React.Component {
 		this.closeRedmineIssue(this.cmnRedmineId.value)
 	}
 	closeGitlabIssue (issueIid) {
-		const { gitlabUserId, dispatch } = this.props
+		const { dispatch } = this.props
 
 		REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
 			this.gitlabEditWrapper.style.display = 'none'
-			dispatch(setBoards(gitlabUserId))
+			dispatch(fetchGitlabIssues())
 		}, 'PUT', {
 			issue_iid: issueIid,
 			state_event: 'close'
@@ -62,10 +63,10 @@ class Index extends React.Component {
 	}
 	createGlFromRm (issue) {
 		const { dispatch, gitlabUserId, boards } = this.props
-		let labels = [gitlabUserId == 4 ? 'Frontend' : 'Backend', this.getGitlabLabelByRedmineStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
+		let labels = [gitlabUserId == 4 ? 'Frontend' : 'Backend', GitLab.getGitlabLabelByRedmineStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
 
 		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, () => {
-			dispatch(setBoards(gitlabUserId))
+			dispatch(fetchGitlabIssues())
 		}, 'PUT', {
 			title: `${issue.id} - ${issue.subject}`,
 			description: issue.description,
@@ -74,18 +75,18 @@ class Index extends React.Component {
 		})
 	}
 	createRmFromGl (issue) {
-		const { dispatch, gitlabUserId } = this.props
+		const { dispatch } = this.props
 		
 		return REST.rm(`issues.json`, data => {
 			if (!this._findRmId(issue.title)) {
 				REST.gl(`projects/${systems.gitlab.projectId}/issues/${issue.iid}`, () => {
-					dispatch(setBoards(gitlabUserId))
+					dispatch(fetchGitlabIssues())
 				}, 'PUT', {
 					title: `${data.issue.id} - ${issue.title}`,
 				})
 			}
 			else {
-				dispatch(setBoards(gitlabUserId))
+				dispatch(fetchGitlabIssues())
 			}
 		}, 'POST', {
 			issue: {
@@ -130,44 +131,31 @@ class Index extends React.Component {
 		this.gitlabEditWrapper.style.display = 'block'
 	}
 	_findCommonTasks () {
-		const { issues, boards, boardLists } = this.props
-
-		// we find common tasks only when there are all boardLists fetched
-		if (!boards.length || boards.length != Object.keys(boardLists).length) {
-			return
-		}
-
-		let commonTasks = {}
+		const { issues, gitlabIssues } = this.props
 
 		let issueIds = issues.reduce((result, issue) => {
 			result.push(issue.id)
 			return result
 		}, [])
 
-		for (let key in boardLists) {
-			if (boardLists.hasOwnProperty(key)) {
-				let list = boardLists[key];
-				if (list.length) {
-					list.map(task => {
-						let rmId = this._findRmId(task.title)
-						if (issueIds.indexOf(rmId) > -1) {
-							commonTasks[rmId] = {
-								redmine: this.getRedmineTask(rmId),
-								gitlab: task
-							}
-						}
-					})
+		return gitlabIssues.reduce((result, issue) => {
+			let rmId = this._findRmId(issue.title)
+			if (issueIds.indexOf(rmId) > -1) {
+				result[rmId] = {
+					redmine: this.getRedmineTask(rmId),
+					gitlab: issue,
 				}
 			}
-		}
-		return commonTasks
+			return result
+		}, {})
 	}
-	_findGitlabIssue (rmIssueId, boardLists) {
-		for (let boardLabel in boardLists) {
-			let boardList = boardLists[boardLabel]
-			for (let i in boardList) {
-				if (this._findRmId(boardList[i].title) == rmIssueId) {
-					return boardList[i]
+	_findGitlabIssue (rmIssueId) {
+		const { gitlabIssues } = this.props
+
+		for (let i in gitlabIssues) {
+			if (gitlabIssues.hasOwnProperty(i)) {
+				if (this._findRmId(gitlabIssues[i].title) == rmIssueId) {
+					return gitlabIssues[i]
 				}
 			}
 		}
@@ -195,23 +183,6 @@ class Index extends React.Component {
 			result.push(board.label.name)
 			return result
 		}, [])
-	}
-	_getGitlabUserById (redmineUserId, redmineUsers, gitlabUsers) {
-		let userName = redmineUsers.reduce((result, user) => {
-			if (result.id == redmineUserId) {
-				return result.name
-			}
-			if (user.id == redmineUserId) {
-				return user.name
-			}
-			return result
-		}, redmineUsers[0])
-		for (let i in gitlabUsers) {
-			if (gitlabUsers[i].name == userName) {
-				return gitlabUsers[i]
-			}
-		}
-		return {}
 	}
 	getNonBoardLabels (issueLabels, boards) {
 		const boardLabels = this.getBoardLabels(boards)
@@ -241,20 +212,6 @@ class Index extends React.Component {
 		}
 		return
 	}
-	getGitlabLabelByRedmineStatusId (rmStatusId, mapGitlabStatusToRedmine, boards) {
-		let gitlabBoardId = 0
-		for (let glId in mapGitlabStatusToRedmine) {
-			if (rmStatusId == mapGitlabStatusToRedmine[glId]) {
-				gitlabBoardId = glId
-				break
-			}
-		}
-		for (let i in boards) {
-			if (boards[i].id == gitlabBoardId) {
-				return boards[i].label.name
-			}
-		}
-	}
 	getRedmineUserByGitlabUserId (gitlabId, redmineUsers, gitlabUsers) {
 		let userName = gitlabUsers.reduce((result, user) => {
 			if (result.id == gitlabId) {
@@ -273,7 +230,7 @@ class Index extends React.Component {
 		return {}
 	}
 	newCommonTask () {
-		const { dispatch, userId, myTasksOnly, gitlabUserId } = this.props
+		const { dispatch, userId } = this.props
 
 		REST.rm(`issues.json`, data => {
 
@@ -282,10 +239,10 @@ class Index extends React.Component {
 				this.newDescription.value = ''
 				this.newTitle.value = ''
 				dispatch(fetchIssues(userId))
-				dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
+				dispatch(fetchGitlabIssues())
 			}, 'POST', {
 				labels: 'To Do,' + (parseInt(this.newAssignee.value) === 129 ? 'Frontend' : 'Backend'),
-				assignee_id: this._getGitlabUserById(this.newAssignee.value, systems.redmine.users, systems.gitlab.users).id,
+				assignee_id: GitLab._getGitlabUserById(this.newAssignee.value, systems.redmine.users, systems.gitlab.users).id,
 				title: `${data.issue.id} - ${this.newTitle.value}`,
 				description: this.newDescription.value,
 			})
@@ -326,46 +283,22 @@ class Index extends React.Component {
 	 * @returns {*}
 	 */
 	pingMeGitlabIssue (issue) {
-		let gitlabIssue = this._findGitlabIssue(issue.id, this.props.boardLists)
+		let gitlabIssue = this._findGitlabIssue(issue.id)
 
 		if (!gitlabIssue) {
 			return alert('Error: no GitLab Issue found')
 		}
 
-		const { myTasksOnly, gitlabUserId, dispatch } = this.props
+		const { gitlabUserId, dispatch } = this.props
 
-		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${gitlabIssue.iid}`, () => dispatch(setBoards(myTasksOnly ? gitlabUserId : null)), 'PUT', {
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${gitlabIssue.iid}`, () => dispatch(fetchGitlabIssues()), 'PUT', {
 			assignee_id: gitlabUserId,
 		})
 	}
 	updateCommonTask () {
 		const rmUserId = this.getRedmineUserByGitlabUserId(this.cmnAssignTo.value, systems.redmine.users, systems.gitlab.users)
-		this.updateGitlabIssue(this.cmnGitlabId.value, this.cmnGitlabLabels.value, this.cmnState[this.cmnState.selectedIndex].text, this.cmnAssignTo.value, this.cmnComment.value)
+		GitLab.updateGitlabIssue(this.gitlabEditWrapper, this.props.dispatch, this.cmnGitlabId.value, this.cmnGitlabLabels.value, this.cmnState[this.cmnState.selectedIndex].text, this.cmnAssignTo.value, this.cmnComment.value)
 		this.updateRedmineIssue(this.cmnRedmineId.value, this.cmnState.value, rmUserId.id, this.cmnComment.value)
-	}
-	updateGitlabIssue (issueIid, nonBoardLabels, boardLabel, assigneeId, comment = ``) {
-		const { dispatch, gitlabUserId, myTasksOnly } = this.props
-
-		let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
-		labels.push(boardLabel)
-
-		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
-			this.gitlabEditWrapper.style.display = 'none'
-			if (comment) {
-				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issueIid}/notes`, () => {
-					dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
-				}, 'POST', {
-					body: comment
-				})
-			}
-			else {
-				dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
-			}
-		}, 'PUT', {
-			issue_iid: issueIid,
-			assignee_id: assigneeId,
-			labels: labels.join(','),
-		})
 	}
 	updateRedmineIssue (issueId, statusId, assigneeId, comment = ``) {
 		const { dispatch, userId } = this.props
@@ -384,7 +317,7 @@ class Index extends React.Component {
 	}
 
 	render() {
-		const { userId, gitlabUserId, issues, boards, boardLists, myTasksOnly } = this.props
+		const { gitlabIssues, userId, gitlabUserId, issues, boards, myTasksOnly } = this.props
 
 		let commonTasks = this._findCommonTasks()
 
@@ -394,9 +327,9 @@ class Index extends React.Component {
 					User:&nbsp;
 					<select ref={select => this.select = select } onChange={() => {
 						this.props.dispatch(setUser(this.select.value))
-						let gitlabUser = this._getGitlabUserById(this.select.value, systems.redmine.users, systems.gitlab.users)
+						let gitlabUser = GitLab._getGitlabUserById(this.select.value, systems.redmine.users, systems.gitlab.users)
 						this.props.dispatch(setGitlabUser(gitlabUser.id))
-						this.props.dispatch(setBoards(myTasksOnly ? gitlabUser.id : null))
+						this.props.dispatch(fetchGitlabIssues())
 						this.props.dispatch(fetchIssues(this.select.value))
 					}} value={userId}>
 						{systems.redmine.users && systems.redmine.users.map((person) => (
@@ -495,10 +428,7 @@ class Index extends React.Component {
 				<div id="gitlabWrapper" style={{ float: 'left', width: '49%' }}>
 					<h2>
 						<a href={`http://gitlab.dev.footshop.cz/footshop/footshop-ng/boards`} target="_blank">Gitlab board:</a>
-						<button style={{ marginLeft: 10 }} onClick={() => {
-							this.props.dispatch(toggleMyTasksOnly())
-							this.props.dispatch(setBoards(!myTasksOnly ? gitlabUserId : null))
-						}}>{myTasksOnly ? `All tasks` : `My tasks only`}</button>
+						<button style={{ marginLeft: 10 }} onClick={ () => this.props.dispatch(toggleMyTasksOnly()) }>{myTasksOnly ? `All tasks` : `My tasks only`}</button>
 					</h2>
 					<div ref={elm => this.gitlabEditWrapper = elm} style={{ display: 'none' }}>
 						<button style={{ float: `right` }} onClick={() => this.gitlabEditWrapper.style.display = 'none'}>x</button>
@@ -516,7 +446,7 @@ class Index extends React.Component {
 								<option key={person.id} value={person.id}>{person.name}</option>
 							))}
 						</select></p>
-						<button onClick={() => this.updateGitlabIssue(this.gitlabEdit.value, this.gitlabEditLabels.value, this.gitlabEditSelect.value, this.gitlabEditUser.value)}>Update</button>
+						<button onClick={() => GitLab.updateGitlabIssue(this.gitlabEditWrapper, this.props.dispatch, this.gitlabEdit.value, this.gitlabEditLabels.value, this.gitlabEditSelect.value, this.gitlabEditUser.value)}>Update</button>
 						<button onClick={() => this.closeGitlabIssue(this.gitlabEdit.value)}>Close</button>
 					</div>
 					<ol style={{ backgroundColor: '#333', padding: 20 }}>
@@ -524,27 +454,38 @@ class Index extends React.Component {
 							<li key={i} style={{ color: board.label.color }}>
 								<span style={{ cursor: 'pointer' }} onClick={() => (this[`list${i}`].style.display = this[`list${i}`].style.display == 'none' ? 'block' : 'none')}>{board.label.name}</span>
 								<ol ref={elm => this[`list${i}`] = elm}>
-									{boardLists[board.label.name] && boardLists[board.label.name].length && boardLists[board.label.name].map(issue => (
-										<li key={issue.id}>
-											<a href="#" onClick={e => {
-												e.preventDefault()
-												this._editGitlabIssue(issue)
-												location.href = '#gitlabWrapper'
-											}}>{issue.iid} - {issue.title}</a><br/>
-											{issue.assignee ? <img src={issue.assignee.avatar_url} alt={issue.assignee.name} title={`Assigned to ${issue.assignee.name}`} style={{ width: 30, display: 'inline-block', borderRadius: '50%', verticalAlign: `middle` }} /> : ``}
-											{issue.labels.indexOf('Frontend') >=0 ?
-												<span style={{ backgroundColor: `#44ad8e`, color: `#fff`, display: `inline-block`, width: 25, height: 25, marginLeft: 10, textAlign: `center`, borderRadius: `50%`, verticalAlign: `middle` }}>F</span>
-												: ``
-											}
-											{issue.labels.indexOf('Backend') >= 0 ?
-												<span style={{ backgroundColor: `#d1d100`, color: `#fff`, display: `inline-block`, width: 25, height: 25, marginLeft: 10, textAlign: `center`, borderRadius: `50%`, verticalAlign: `middle` }}>B</span>
-												: ``
-											}
-											&nbsp;<small onClick={() => this.createRmFromGl(issue)} title="Create Redmine issue from this one" style={{ textDecoration: 'underline', cursor: 'pointer' }}>create</small>
-											&nbsp;<small onClick={() => this.pingMeRMIssue(issue)} title="Ping Redmine issue to myself" style={{ textDecoration: 'underline', cursor: 'pointer' }}>ping</small>
-											<a href={`${systems.gitlab.issueUrl}${issue.iid}`} target="_blank" style={{ marginLeft: 10 }}><img src="../static/images/gl.png" alt="GitLab Issue" width={20}/></a>
-										</li>
-									))}
+									{gitlabIssues && gitlabIssues.length && gitlabIssues.map(issue => {
+										let showTask = true
+
+										if (issue.labels.indexOf(board.label.name) === -1) {
+											showTask = false
+										}
+										if (myTasksOnly && (!issue.assignee || issue.assignee.id !== gitlabUserId)) {
+											showTask = false
+										}
+
+										return showTask ? (
+											<li key={issue.id}>
+												<a href="#" onClick={e => {
+													e.preventDefault()
+													this._editGitlabIssue(issue)
+													location.href = '#gitlabWrapper'
+												}}>{issue.iid} - {issue.title}</a><br/>
+												{issue.assignee ? <img src={issue.assignee.avatar_url} alt={issue.assignee.name} title={`Assigned to ${issue.assignee.name}`} style={{ width: 30, display: 'inline-block', borderRadius: '50%', verticalAlign: `middle` }} /> : ``}
+												{issue.labels.indexOf('Frontend') >=0 ?
+													<span style={{ backgroundColor: `#44ad8e`, color: `#fff`, display: `inline-block`, width: 25, height: 25, marginLeft: 10, textAlign: `center`, borderRadius: `50%`, verticalAlign: `middle` }}>F</span>
+													: ``
+												}
+												{issue.labels.indexOf('Backend') >= 0 ?
+													<span style={{ backgroundColor: `#d1d100`, color: `#fff`, display: `inline-block`, width: 25, height: 25, marginLeft: 10, textAlign: `center`, borderRadius: `50%`, verticalAlign: `middle` }}>B</span>
+													: ``
+												}
+												&nbsp;<small onClick={() => this.createRmFromGl(issue)} title="Create Redmine issue from this one" style={{ textDecoration: 'underline', cursor: 'pointer' }}>create</small>
+												&nbsp;<small onClick={() => this.pingMeRMIssue(issue)} title="Ping Redmine issue to myself" style={{ textDecoration: 'underline', cursor: 'pointer' }}>ping</small>
+												<a href={`${systems.gitlab.issueUrl}${issue.iid}`} target="_blank" style={{ marginLeft: 10 }}><img src="../static/images/gl.png" alt="GitLab Issue" width={20}/></a>
+											</li>
+										) : false
+									})}
 								</ol>
 							</li>
 						))}
@@ -559,7 +500,7 @@ export default nextConnect(state => ({
 	userId: state.global.userId,
 	gitlabUserId: state.global.gitlabUserId,
 	issues: state.redmine.issues,
+	gitlabIssues: state.gitlab.issues,
 	boards: state.gitlab.boards,
-	boardLists: state.gitlab.boardLists,
 	myTasksOnly: state.gitlab.myTasksOnly,
 }))(Index)

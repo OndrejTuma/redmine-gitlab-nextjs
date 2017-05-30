@@ -7,8 +7,9 @@ import getSlug from 'speakingurl'
 import Layout from '../components/Layout'
 
 import { mapGitlabStatusToRedmine, systems } from '../consts'
+import { REST } from '../apiController'
 import { nextConnect } from '../store'
-import { setUser, fetchIssues, setBoards, toggleMyTasksOnly, setGitlabUser, restFetch } from '../redux/actions'
+import { setUser, fetchIssues, setBoards, toggleMyTasksOnly, setGitlabUser } from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
@@ -37,68 +38,58 @@ class Index extends React.Component {
 		this.closeRedmineIssue(this.cmnRedmineId.value)
 	}
 	closeGitlabIssue (issueIid) {
-		const { gitlabUserId, myTasksOnly } = this.props
+		const { gitlabUserId, dispatch } = this.props
 
-		restFetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues/${issueIid}`, data => {
+		REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
 			this.gitlabEditWrapper.style.display = 'none'
-			this.props.dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
+			dispatch(setBoards(gitlabUserId))
 		}, 'PUT', {
-			private_token: systems.gitlab.auth,
 			issue_iid: issueIid,
 			state_event: 'close'
 		})
 	}
 	closeRedmineIssue (issueId) {
-		const { gitlabUserId, myTasksOnly } = this.props
+		const { dispatch, userId } = this.props
 
-		fetch(`${systems.redmine.url}issues/${issueId}.json`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				key: systems.redmine.auth,
-				issue: {
-					status_id: 5 // Uzavřený
-				}
-			}),
+		return REST.rm(`issues/${issueId}.json`, () => {
+			this.cmnWrapper.style.display = 'none'
+			dispatch(fetchIssues(userId))
+		}, 'PUT', {
+			issue: {
+				status_id: 5 // Uzavřený
+			}
 		})
-			.then(data => {
-				this.cmnWrapper.style.display = 'none'
-				this.props.dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
-				//return data.json()
-			})
-			.catch(err => console.log(err))
 	}
 	createGlFromRm (issue) {
-		restFetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues`, data => {
-			console.log('createGlFromRm ',data)
-			setBoards(this.props.gitlabUserId)
-		}, 'POST', {
-			private_token: systems.gitlab.auth,
+		const { dispatch, gitlabUserId, boards } = this.props
+		let labels = [gitlabUserId == 4 ? 'Frontend' : 'Backend', this.getGitlabLabelByRedmineStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
+
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, () => {
+			dispatch(setBoards(gitlabUserId))
+		}, 'PUT', {
 			title: `${issue.id} - ${issue.subject}`,
 			description: issue.description,
 			assignee_id: this.props.gitlabUserId,
-			labels: [this.props.gitlabUserId == 4 ? 'Frontend' : 'Backend', this.getGitlabLabelByRedmineStatusId(issue.status.id, mapGitlabStatusToRedmine, this.props.boards)].join(','),
+			labels,
 		})
 	}
-	createRmFromGl (issue, userId) {
-		if (this.findRmId(issue.title)) {
-			return alert('GitLab has rm id already defined in title')
-		}
-
-		restFetch(`${systems.redmine.url}issues.json`, data => {
-			console.log('createRmFromGl',data)
-			restFetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues/${issue.iid}`, () => {
-				setBoards(this.props.gitlabUserId)
-			}, 'PUT', {
-				private_token: systems.gitlab.auth,
-				title: `${data.issue.id} - ${issue.title}`,
-			})
+	createRmFromGl (issue) {
+		const { dispatch, gitlabUserId } = this.props
+		
+		return REST.rm(`issues.json`, data => {
+			if (!this._findRmId(issue.title)) {
+				REST.gl(`projects/${systems.gitlab.projectId}/issues/${issue.iid}`, () => {
+					dispatch(setBoards(gitlabUserId))
+				}, 'PUT', {
+					title: `${data.issue.id} - ${issue.title}`,
+				})
+			}
+			else {
+				dispatch(setBoards(gitlabUserId))
+			}
 		}, 'POST', {
-			key: systems.redmine.auth,
 			issue: {
-				project_id: 15, // Footshop.cz
+				project_id: systems.redmine.projectId,
 				status_id: 2, // ve vyvoji
 				subject: issue.title,
 				description: issue.description,
@@ -106,9 +97,9 @@ class Index extends React.Component {
 			}
 		})
 	}
-	editCommonTask (commonTask) {
+	_editCommonTask (commonTask) {
 		const taskBoard = this.getBoardByTaskLabels(commonTask.gitlab.labels, this.props.boards)
-console.log('taskBoard',taskBoard, commonTask);
+
 		this.cmnWrapper.style.display = 'block'
 		this.cmnHeading.innerHTML = commonTask.redmine.subject
 		this.cmnGitlabLabels.value = this.getNonBoardLabels(commonTask.gitlab.labels, this.props.boards).join(',')
@@ -116,11 +107,10 @@ console.log('taskBoard',taskBoard, commonTask);
 		this.cmnGitlabId.value = commonTask.gitlab.iid
 		this.cmnState.value = mapGitlabStatusToRedmine[taskBoard.id] ? mapGitlabStatusToRedmine[taskBoard.id] : this.cmnState.value
 		this.cmnAssignTo.value = commonTask.gitlab.assignee.id
-
 	}
-	editGitlabIssue (issue) {
+	_editGitlabIssue (issue) {
 		const { boards } = this.props
-		const rmId = this.findRmId(issue.title)
+		const rmId = this._findRmId(issue.title)
 
 		this.gitlabEditLabels.value = this.getNonBoardLabels(issue.labels, boards).join(',')
 		this.gitlabEdit.value = issue.iid
@@ -139,7 +129,7 @@ console.log('taskBoard',taskBoard, commonTask);
 
 		this.gitlabEditWrapper.style.display = 'block'
 	}
-	findCommonTasks () {
+	_findCommonTasks () {
 		const { issues, boards, boardLists } = this.props
 
 		// we find common tasks only when there are all boardLists fetched
@@ -155,32 +145,34 @@ console.log('taskBoard',taskBoard, commonTask);
 		}, [])
 
 		for (let key in boardLists) {
-			let list = boardLists[key];
-			if (list.length) {
-				list.map(task => {
-					let rmId = this.findRmId(task.title)
-					if (issueIds.indexOf(rmId) > -1) {
-						commonTasks[rmId] = {
-							redmine: this.getRedmineTask(rmId),
-							gitlab: task
+			if (boardLists.hasOwnProperty(key)) {
+				let list = boardLists[key];
+				if (list.length) {
+					list.map(task => {
+						let rmId = this._findRmId(task.title)
+						if (issueIds.indexOf(rmId) > -1) {
+							commonTasks[rmId] = {
+								redmine: this.getRedmineTask(rmId),
+								gitlab: task
+							}
 						}
-					}
-				})
+					})
+				}
 			}
 		}
 		return commonTasks
 	}
-	findGitlabIssue (rmIssueId, boardLists) {
+	_findGitlabIssue (rmIssueId, boardLists) {
 		for (let boardLabel in boardLists) {
 			let boardList = boardLists[boardLabel]
 			for (let i in boardList) {
-				if (this.findRmId(boardList[i].title) == rmIssueId) {
+				if (this._findRmId(boardList[i].title) == rmIssueId) {
 					return boardList[i]
 				}
 			}
 		}
 	}
-	findRmId(string) {
+	_findRmId(string) {
 		const findRmId = /\d{4,}/g
 		return parseInt(string.match(findRmId))
 	}
@@ -204,7 +196,7 @@ console.log('taskBoard',taskBoard, commonTask);
 			return result
 		}, [])
 	}
-	getGitlabUserById (redmineUserId, redmineUsers, gitlabUsers) {
+	_getGitlabUserById (redmineUserId, redmineUsers, gitlabUsers) {
 		let userName = redmineUsers.reduce((result, user) => {
 			if (result.id == redmineUserId) {
 				return result.name
@@ -281,22 +273,25 @@ console.log('taskBoard',taskBoard, commonTask);
 		return {}
 	}
 	newCommonTask () {
-		restFetch(`${systems.redmine.url}issues.json`, data => {
-			restFetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues`, () => {
+		const { dispatch, userId, myTasksOnly, gitlabUserId } = this.props
+
+		REST.rm(`issues.json`, data => {
+
+			REST.gl(`projects/${systems.gitlab.projectId}/issues`, () => {
 				this.newWrapper.style.display= 'none'
 				this.newDescription.value = ''
 				this.newTitle.value = ''
+				dispatch(fetchIssues(userId))
+				dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
 			}, 'POST', {
-				private_token: systems.gitlab.auth,
-				labels: `To Do`,
-				assignee_ids: [this.getGitlabUserById(this.newAssignee.value, systems.redmine.users, systems.gitlab.users)],
+				labels: 'To Do,' + (parseInt(this.newAssignee.value) === 129 ? 'Frontend' : 'Backend'),
+				assignee_id: this._getGitlabUserById(this.newAssignee.value, systems.redmine.users, systems.gitlab.users).id,
 				title: `${data.issue.id} - ${this.newTitle.value}`,
 				description: this.newDescription.value,
 			})
 		}, 'POST', {
-			key: systems.redmine.auth,
 			issue: {
-				project_id: 15, // Footshop.cz
+				project_id: systems.redmine.projectId,
 				status_id: 4, // ceka se
 				subject: this.newTitle.value,
 				description: this.newDescription.value,
@@ -304,29 +299,43 @@ console.log('taskBoard',taskBoard, commonTask);
 			}
 		})
 	}
-	pingMeRMIssue (issue, assigneeId) {
-		const rmId = this.findRmId(issue.title)
 
-		restFetch(`${systems.redmine.url}issues/${rmId}.json`, () => {}, 'PUT', {
-			key: systems.redmine.auth,
+	/**
+	 * Pings Redmine issue to current user
+	 * @param issue - GitLab issue
+	 * @returns {*}
+	 */
+	pingMeRMIssue (issue) {
+		const rmId = this._findRmId(issue.title)
+
+		if (!rmId) {
+			return
+		}
+
+		const { dispatch, userId } = this.props
+
+		return REST.rm(`issues/${rmId}.json`, () => dispatch(fetchIssues(userId)), 'PUT', {
 			issue: {
-				assigned_to_id : assigneeId,
+				assigned_to_id : userId,
 			}
 		})
 	}
+	/**
+	 * Pings GitLab issue to current user
+	 * @param issue - Redmine issue
+	 * @returns {*}
+	 */
 	pingMeGitlabIssue (issue) {
-		let gitlabIssue = this.findGitlabIssue(issue.id, this.props.boardLists)
+		let gitlabIssue = this._findGitlabIssue(issue.id, this.props.boardLists)
 
 		if (!gitlabIssue) {
-			return console.log('Error: no GitLab Issue found')
+			return alert('Error: no GitLab Issue found')
 		}
 
-		restFetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues/${gitlabIssue.iid}`, data => {
-			console.log('pingMeGitlabIssue ',data)
-			setBoards(this.props.gitlabUserId)
-		}, 'PUT', {
-			private_token: systems.gitlab.auth,
-			assignee_id: this.props.gitlabUserId,
+		const { myTasksOnly, gitlabUserId, dispatch } = this.props
+
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${gitlabIssue.iid}`, () => dispatch(setBoards(myTasksOnly ? gitlabUserId : null)), 'PUT', {
+			assignee_id: gitlabUserId,
 		})
 	}
 	updateCommonTask () {
@@ -335,56 +344,49 @@ console.log('taskBoard',taskBoard, commonTask);
 		this.updateRedmineIssue(this.cmnRedmineId.value, this.cmnState.value, rmUserId.id, this.cmnComment.value)
 	}
 	updateGitlabIssue (issueIid, nonBoardLabels, boardLabel, assigneeId, comment = ``) {
-		const { gitlabUserId, myTasksOnly } = this.props
+		const { dispatch, gitlabUserId, myTasksOnly } = this.props
 
 		let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
 		labels.push(boardLabel)
 
-		fetch(`${systems.gitlab.url}projects/${systems.gitlab.projectId}/issues/${issueIid}`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				private_token: systems.gitlab.auth,
-				issue_iid: issueIid,
-				assignee_id: assigneeId,
-				labels: labels.join(','),
-			}),
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
+			this.gitlabEditWrapper.style.display = 'none'
+			if (comment) {
+				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issueIid}/notes`, () => {
+					dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
+				}, 'POST', {
+					body: comment
+				})
+			}
+			else {
+				dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
+			}
+		}, 'PUT', {
+			issue_iid: issueIid,
+			assignee_id: assigneeId,
+			labels: labels.join(','),
 		})
-			.then(data => {
-				this.gitlabEditWrapper.style.display = 'none'
-				this.props.dispatch(setBoards(myTasksOnly ? gitlabUserId : null))
-				//return data.json()
-			})
-			.catch(err => console.log(err))
 	}
 	updateRedmineIssue (issueId, statusId, assigneeId, comment = ``) {
-		fetch(`${systems.redmine.url}issues/${issueId}.json`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				key: systems.redmine.auth,
-				issue: {
-					assigned_to_id : assigneeId,
-					status_id: statusId,
-					notes: comment,
-				}
-			}),
+		const { dispatch, userId } = this.props
+
+		return REST.rm(`issues/${issueId}.json`, () => {
+			this.cmnWrapper.style.display = 'none'
+			this.cmnComment.value = ''
+			dispatch(fetchIssues(userId))
+		}, 'PUT', {
+			issue: {
+				assigned_to_id : assigneeId,
+				status_id: statusId,
+				notes: comment,
+			}
 		})
-			.then(data => {
-				this.cmnWrapper.style.display = 'none'
-				this.cmnComment.value = ''
-			})
-			.catch(err => console.log(err))
 	}
 
 	render() {
 		const { userId, gitlabUserId, issues, boards, boardLists, myTasksOnly } = this.props
 
-		let commonTasks = this.findCommonTasks()
+		let commonTasks = this._findCommonTasks()
 
 		return (
 			<Layout>
@@ -392,9 +394,9 @@ console.log('taskBoard',taskBoard, commonTask);
 					User:&nbsp;
 					<select ref={select => this.select = select } onChange={() => {
 						this.props.dispatch(setUser(this.select.value))
-						let gitlabUser = this.getGitlabUserById(this.select.value, systems.redmine.users, systems.gitlab.users)
+						let gitlabUser = this._getGitlabUserById(this.select.value, systems.redmine.users, systems.gitlab.users)
 						this.props.dispatch(setGitlabUser(gitlabUser.id))
-						this.props.dispatch(setBoards(gitlabUser.id))
+						this.props.dispatch(setBoards(myTasksOnly ? gitlabUser.id : null))
 						this.props.dispatch(fetchIssues(this.select.value))
 					}} value={userId}>
 						{systems.redmine.users && systems.redmine.users.map((person) => (
@@ -444,7 +446,7 @@ console.log('taskBoard',taskBoard, commonTask);
 					<ol>
 						{commonTasks && Object.keys(commonTasks).map(key => (
 							<li key={key}>
-								<a href="#" onClick={() => this.editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
+								<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
 								<a style={{ marginRight: 10 }} href="#" onClick={(e) => {
 									e.preventDefault()
 									let branch = `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`
@@ -526,7 +528,7 @@ console.log('taskBoard',taskBoard, commonTask);
 										<li key={issue.id}>
 											<a href="#" onClick={e => {
 												e.preventDefault()
-												this.editGitlabIssue(issue)
+												this._editGitlabIssue(issue)
 												location.href = '#gitlabWrapper'
 											}}>{issue.iid} - {issue.title}</a><br/>
 											{issue.assignee ? <img src={issue.assignee.avatar_url} alt={issue.assignee.name} title={`Assigned to ${issue.assignee.name}`} style={{ width: 30, display: 'inline-block', borderRadius: '50%', verticalAlign: `middle` }} /> : ``}
@@ -538,8 +540,8 @@ console.log('taskBoard',taskBoard, commonTask);
 												<span style={{ backgroundColor: `#d1d100`, color: `#fff`, display: `inline-block`, width: 25, height: 25, marginLeft: 10, textAlign: `center`, borderRadius: `50%`, verticalAlign: `middle` }}>B</span>
 												: ``
 											}
-											&nbsp;<small onClick={() => this.createRmFromGl(issue, userId)} title="Create Redmine issue from this one" style={{ textDecoration: 'underline', cursor: 'pointer' }}>create</small>
-											&nbsp;<small onClick={() => this.pingMeRMIssue(issue, userId)} title="Ping Redmine issue to myself" style={{ textDecoration: 'underline', cursor: 'pointer' }}>ping</small>
+											&nbsp;<small onClick={() => this.createRmFromGl(issue)} title="Create Redmine issue from this one" style={{ textDecoration: 'underline', cursor: 'pointer' }}>create</small>
+											&nbsp;<small onClick={() => this.pingMeRMIssue(issue)} title="Ping Redmine issue to myself" style={{ textDecoration: 'underline', cursor: 'pointer' }}>ping</small>
 											<a href={`${systems.gitlab.issueUrl}${issue.iid}`} target="_blank" style={{ marginLeft: 10 }}><img src="../static/images/gl.png" alt="GitLab Issue" width={20}/></a>
 										</li>
 									))}

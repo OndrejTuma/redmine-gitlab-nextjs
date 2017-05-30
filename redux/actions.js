@@ -1,28 +1,5 @@
-import fetch from 'isomorphic-fetch'
 import { systems } from '../consts'
 import { REST } from '../apiController'
-
-export const restFetch = (url, callback, method = `GET`, data) => {
-	const params = !!data ? {
-		mode: 'cors',
-		method: method,
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(data)
-	} : {}
-
-	// isFetching(true)
-	return fetch(url, params)
-		.then(
-			response => response.json(),
-			error => console.log('Error occured while fetching:', error)
-		)
-		.then(response => {
-			// isFetching(false)
-			callback(response)
-		})
-}
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
 export const setUser = userId => dispatch => dispatch({ type: 'SET_USER', payload: userId })
@@ -85,8 +62,8 @@ export const setAllAssignees = userIds => dispatch => {
 */
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
-export const setBoards = (onlyForUserId = 0) => dispatch => restFetch(
-	`${systems.gitlab.url}projects/${systems.gitlab.projectId}/boards/?private_token=${systems.gitlab.auth}`,
+export const setBoards = (onlyForUserId = 0) => dispatch => REST.gl(
+	`projects/${systems.gitlab.projectId}/boards`,
 	data => {
 		if (data[0]) {
 			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
@@ -94,15 +71,17 @@ export const setBoards = (onlyForUserId = 0) => dispatch => restFetch(
 		}
 	},
 )
-const fillBoardWithIssues = (label, onlyForUserId) => dispatch => restFetch(
-	`${systems.gitlab.url}groups/02/issues/?labels=${label}&private_token=${systems.gitlab.auth}`,
-	data => {
-		dispatch({ type: 'SET_BOARDS_ISSUES', payload: onlyForUserId ? data.reduce((result, issue) => {
+const fillBoardWithIssues = (label, onlyForUserId) => dispatch => REST.gl(
+	`groups/02/issues/?labels=${label}`,
+	data => dispatch({
+		type: 'SET_BOARDS_ISSUES',
+		payload: onlyForUserId ? data.reduce((result, issue) => {
 			if (issue.assignee && issue.assignee.id == onlyForUserId) {
 				result.push(issue)
 			}
 			return result
-		}, []) : data, label })
-	}
+		}, []) : data,
+		label
+	})
 )
 export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })

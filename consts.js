@@ -7,9 +7,10 @@ export const mapGitlabStatusToRedmine = {
 }
 export const systems = {
 	redmine: {
-		url: 'http://rm.udiv.eu/',
-		issueUrl: 'http://rm.udiv.eu/issues/',
 		auth: '3135546c8e97570c179097d2b65738a20368bfc1',
+		issueUrl: 'http://rm.udiv.eu/issues/',
+		projectId: 15, // Footshop.cz
+		url: 'http://rm.udiv.eu/',
 		users: [
 			{ id: 187, name: 'Lukas' },
 			{ id: 168, name: 'Radek' },
@@ -27,10 +28,10 @@ export const systems = {
 		]
 	},
 	gitlab: {
-		url: 'http://gitlab.dev.footshop.cz/api/v4/',
-		issueUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/issues/',
 		auth: 'JYU71ybJZx1HzRjG4eGC',
+		issueUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/issues/',
 		projectId: 3,	// footshop-ng
+		url: 'http://gitlab.dev.footshop.cz/api/v4/',
 		users: [
 			{ id: 1, name: 'Lukas' },
 			{ id: 2, name: 'Radek' },
@@ -42,13 +43,13 @@ export const systems = {
 		],
 	},
 	timedoctor: {
-		url: 'https://webapi.timedoctor.com/v1.1/',
-		auth: 'YzRjM2E5OTM4YWY2MjcwMDRmZjEzNGNmZDU4YmJmZWZlM2RmYzQ5ZjU3OTMyZTc4OThkOTRjZTMxMDA4ZjkyNA',
 		// auth: 'M2I1NTU2MWIyZTkzNGViZGJkMDM3YzBlZmZkYjQxY2MxNTA5ZTlkNWQ5ZjIzMWMxMGEyYjljODk4YmE4OGEwMA', //milosh
 		// projectId: 883939, // Footshop REST
 		// projectId: 440915, // Footshop.com
-		projectId: 157560, // Footshop.cz
+		auth: 'YzRjM2E5OTM4YWY2MjcwMDRmZjEzNGNmZDU4YmJmZWZlM2RmYzQ5ZjU3OTMyZTc4OThkOTRjZTMxMDA4ZjkyNA',
 		companyId: 257766, // Footshop s.r.o.
+		projectId: 157560, // Footshop.cz
+		url: 'https://webapi.timedoctor.com/v1.1/',
 		users: [
 			{ id: 717767, name: 'Lukas' },
 			{ id: 659514, name: 'Radek' },

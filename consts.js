@@ -7,7 +7,14 @@ export const mapGitlabStatusToRedmine = {
 }
 export const systems = {
 	redmine: {
-		auth: '3135546c8e97570c179097d2b65738a20368bfc1',
+		allowedIssueStatuses: [
+			2, // ve vyvoji
+			3, // vyreseny
+			4, // ceka se
+			5, // uzavreny
+		],
+		// auth: '404f76820130f2287b95cfcbff149be28f1daa12',	//admin api klic
+		auth: '3135546c8e97570c179097d2b65738a20368bfc1',	//muj api klic
 		issueUrl: 'http://rm.udiv.eu/issues/',
 		projectId: 15, // Footshop.cz
 		url: 'http://rm.udiv.eu/',
@@ -20,12 +27,6 @@ export const systems = {
 			{ id: 149, name: 'Tomas' },
 			{ id: 39, name: 'Michal' },
 		],
-		allowedIssueStatuses: [
-			2, // ve vyvoji
-			3, // vyreseny
-			4, // ceka se
-			5, // uzavreny
-		]
 	},
 	gitlab: {
 		auth: 'JYU71ybJZx1HzRjG4eGC',

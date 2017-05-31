@@ -1,5 +1,4 @@
 import React from 'react'
-import { renderToString } from 'react-dom/server'
 import Link from 'next/link'
 import getSlug from 'speakingurl'
 

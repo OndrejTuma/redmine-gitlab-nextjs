@@ -1,5 +1,8 @@
-import { systems } from './consts'
 import fetch from 'isomorphic-fetch'
+import Link from 'next/link'
+import { renderToString } from 'react-dom/server'
+
+import { systems } from './consts'
 import { fetchGitlabIssues, fetchIssues } from './redux/actions'
 
 export const REST = {
@@ -176,6 +179,7 @@ export const GitLab = {
 		})
 	},
 }
+
 export const Redmine = {
 	closeIssue: (dispatch, userId, cmnWrapper, issueId) => REST.rm(
 		`issues/${issueId}.json`, () => {
@@ -262,9 +266,10 @@ const restFetch = (url, callback, method = `GET`, data) => {
 		}
 	}
 	return fetch(url, {
-		//;mode: 'cors',
+		mode: 'cors',
 		method: method,
 		headers: {
+			'Access-Control-Allow-Origin': '*',
 			'Content-Type': 'application/json',
 		},
 		body: method === 'GET' ? null : JSON.stringify(data)

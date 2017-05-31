@@ -3,8 +3,9 @@ import Link from 'next/link'
 import getSlug from 'speakingurl'
 
 import Layout from '../components/Layout'
+import Auth from '../components/Auth'
 
-import { mapGitlabStatusToRedmine, systems } from '../consts'
+import { mapGitlabStatusToRedmine, systems, users } from '../consts'
 import { REST, GitLab, Redmine, Boards } from '../apiController'
 import { nextConnect } from '../store'
 import { setUser, fetchIssues, setBoards, fetchGitlabIssues, toggleMyTasksOnly, setGitlabUser } from '../redux/actions'
@@ -153,12 +154,13 @@ class Index extends React.Component {
 
 
 	render() {
-		const { dispatch, gitlabIssues, userId, gitlabUserId, issues, boards, myTasksOnly } = this.props
+		const { dispatch, gitlabIssues, userId, gitlabUserId, issues, boards, myTasksOnly, user } = this.props
 
 		let commonTasks = this._findCommonTasks()
 
-		return (
+		return user ? (
 			<Layout>
+				<Auth />
 				<h2>
 					User:&nbsp;
 					<select ref={select => this.select = select } onChange={() => {
@@ -336,11 +338,14 @@ class Index extends React.Component {
 					</ol>
 				</div>
 			</Layout>
+		) : (
+			<p><strong>You must be logged in</strong></p>
 		)
 	}
 }
 
 export default nextConnect(state => ({
+	user: state.auth.user,
 	userId: state.global.userId,
 	gitlabUserId: state.global.gitlabUserId,
 	issues: state.redmine.issues,

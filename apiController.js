@@ -12,7 +12,7 @@ export const REST = {
 		}, data))
 	},
 	gl: (resource, callback, method, data) => {
-		return restFetch(`${systems.gitlab.url}${resource}`, callback, method, Object.assign({
+		return restFetch(`${systems.gitlab.apiUrl}${resource}`, callback, method, Object.assign({
 			private_token: systems.gitlab.auth,
 		}, data))
 	},

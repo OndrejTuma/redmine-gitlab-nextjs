@@ -257,33 +257,28 @@ class Index extends React.Component {
 								<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
 								<a style={{ marginRight: 10 }} href="#" onClick={(e) => {
 									e.preventDefault()
-									let branch = `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`
-									this.code.innerHTML = `git fetch\ngit checkout -b ${branch} origin/production\ngit push --set-upstream origin ${branch}`
-									this.codeWrapper.style.display = 'block'
-								}}>create branch</a>
+									this.innerHTML = 'copied'
+									copy(`feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
+								}}>copy branch name</a>
 								<a style={{ marginRight: 10 }} href="#" onClick={(e) => {
 									e.preventDefault()
-									this.codeTDTaskWrapper.style.display = 'block'
-									this.codeTDTask.innerHTML = `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`
-								}}>create timedoctor task</a>
+									copy(`${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
+								}}>copy timedoctor task</a>
+								<button style={{ marginRight: 10 }} onClick={() => {
+									let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
+									//copy(url)
+									window.location.href = url
+								}}>merge to stage</button>
 								<Link as={`/task/${key}`} href={`/task?id=${key}`}><a style={{ marginRight: 10 }}>rm</a></Link>
 								<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${key}`} target="_blank">
 									<img src="../static/images/rm.png" alt="Redmine" width={20}/>
 								</a>
-								<a style={{ marginRight: 10 }} href={`http://gitlab.dev.footshop.cz/footshop/footshop-ng/issues/${commonTasks[key].gitlab.iid}`} target="_blank">
+								<a style={{ marginRight: 10 }} href={`${systems.gitlab.issueUrl}${commonTasks[key].gitlab.iid}`} target="_blank">
 									<img src="../static/images/gl.png" alt="GitLab" width={20}/>
 								</a>
 							</li>
 						))}
 					</ol>
-				</div>
-				<div ref={elm => this.codeTDTaskWrapper = elm} style={{ display: 'none' }}>
-					<button onClick={() => this.codeTDTaskWrapper.style.display = 'none'}>x</button>
-					<pre style={{ backgroundColor: '#ccc', borderRadius: 5, padding: 10 }}><code ref={elm => this.codeTDTask = elm}></code></pre>
-				</div>
-				<div ref={elm => this.codeWrapper = elm} style={{ display: 'none' }}>
-					<button onClick={() => this.codeWrapper.style.display = 'none'}>x</button>
-					<pre style={{ backgroundColor: '#ccc', borderRadius: 5, padding: 10 }}	><code ref={elm => this.code = elm}></code></pre>
 				</div>
 				<div style={{ float: 'left', width: '49%' }}>
 					<h2>Redmine tasks:</h2>

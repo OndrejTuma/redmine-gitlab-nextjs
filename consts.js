@@ -29,10 +29,12 @@ export const systems = {
 		],
 	},
 	gitlab: {
+		apiUrl: 'http://gitlab.dev.footshop.cz/api/v4/',
 		auth: 'JYU71ybJZx1HzRjG4eGC',
 		issueUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/issues/',
 		projectId: 3,	// footshop-ng
-		url: 'http://gitlab.dev.footshop.cz/api/v4/',
+		projectUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/',
+		url: 'http://gitlab.dev.footshop.cz/',
 		users: [
 			{ id: 1, name: 'Lukas' },
 			{ id: 2, name: 'Radek' },

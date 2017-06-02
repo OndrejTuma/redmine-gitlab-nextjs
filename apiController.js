@@ -2,8 +2,8 @@ import fetch from 'isomorphic-fetch'
 import Link from 'next/link'
 import { renderToString } from 'react-dom/server'
 
-import { systems } from './consts'
-import { fetchGitlabIssues, fetchIssues } from './redux/actions'
+import { systems, mapGitlabStatusToRedmine } from './consts'
+import { fetchGitlabIssues, fetchRmIssues, addGitlabIssue, addIssue } from './redux/actions'
 
 export const REST = {
 	rm: (resource, callback, method, data) => {
@@ -74,15 +74,18 @@ export const GitLab = {
 			state_event: 'close'
 		}
 	),
-	createIssueFromRm: (dispatch, gitlabUserId, boards, issue) => {
-		let labels = [gitlabUserId == 4 ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
+	createIssueFromRm: (dispatch, assigneeId, boards, issue) => {
+		let labels = [assigneeId == 4 ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
 
-		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, () => {
-			dispatch(fetchGitlabIssues())
-		}, 'PUT', {
+		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, issue => {
+			if (issue) {
+				dispatch(addGitlabIssue(issue))
+			}
+			// dispatch(fetchGitlabIssues())
+		}, 'POST', {
 			title: `${issue.id} - ${issue.subject}`,
 			description: issue.description,
-			assignee_id: gitlabUserId,
+			assignee_id: assigneeId,
 			labels,
 		})
 	},
@@ -184,24 +187,25 @@ export const Redmine = {
 	closeIssue: (dispatch, userId, cmnWrapper, issueId) => REST.rm(
 		`issues/${issueId}.json`, () => {
 			cmnWrapper.style.display = 'none'
-			dispatch(fetchIssues(userId))
+			dispatch(fetchRmIssues(userId))
 		}, 'PUT', {
 			issue: {
 				status_id: 5 // Uzavřený
 			}
 		}
 	),
-	createIssueFromGl: (dispatch, issue) => REST.rm(
+	createIssueFromGl: (dispatch, userId, issue) => REST.rm(
 		`issues.json`, data => {
+			if (data.issue) {
+				dispatch(addIssue(data.issue))
+			}
+
 			if (!Redmine.findId(issue.title)) {
 				REST.gl(`projects/${systems.gitlab.projectId}/issues/${issue.iid}`, () => {
 					dispatch(fetchGitlabIssues())
 				}, 'PUT', {
 					title: `${data.issue.id} - ${issue.title}`,
 				})
-			}
-			else {
-				dispatch(fetchGitlabIssues())
 			}
 		}, 'POST', {
 			issue: {
@@ -245,7 +249,7 @@ export const Redmine = {
 		return REST.rm(`issues/${issueId}.json`, () => {
 			cmnWrapper.style.display = 'none'
 			cmnComment.value = ''
-			dispatch(fetchIssues(userId))
+			dispatch(fetchRmIssues(userId))
 		}, 'PUT', {
 			issue: {
 				assigned_to_id : assigneeId,
@@ -258,7 +262,7 @@ export const Redmine = {
 
 
 
-const restFetch = (url, callback, method = `GET`, data) => {
+export const restFetch = (url, callback, method = `GET`, data) => {
 	if (method === 'GET') {
 		url += /\?/.test(url) ? '&' : '?'
 		for (let [key, value] of Object.entries(data)) {

@@ -12,7 +12,7 @@ const Layout = (props) => (
 			a { color: inherit; }
 		  `}</style>
 		</Head>
-		<Header/>
+		<Header />
 		{props.children}
 	</div>
 )

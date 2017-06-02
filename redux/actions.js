@@ -1,13 +1,64 @@
 import { systems } from '../consts'
-import { REST } from '../apiController'
+import { REST, restFetch } from '../apiController'
+import Users from '../modules/Users'
+
+/* ============================= AUTH REDUCER ACTIONS ============================= */
+export const logUser = (name, password, userId = "4") => dispatch => restFetch(`#`, data => {
+	if (data) {
+		dispatch({ type: 'AUTH_USER', payload: data })
+		dispatch({ type: 'LOG_IN' })
+
+		const user = Users.getUserById(data.user.id)
+
+		dispatch(fetchRmIssues(user.ids.rm))
+		dispatch(setBoards())
+		dispatch(fetchGitlabIssues())
+	}
+	// !!! remove this dummy data
+	else {
+		dispatch({ type: 'AUTH_USER', payload: {
+			id: userId,
+			glKey: 'JYU71ybJZx1HzRjG4eGC',
+			rmKey: '3135546c8e97570c179097d2b65738a20368bfc1',
+			tdKey: 'YzRjM2E5OTM4YWY2MjcwMDRmZjEzNGNmZDU4YmJmZWZlM2RmYzQ5ZjU3OTMyZTc4OThkOTRjZTMxMDA4ZjkyNA',
+		}})
+		dispatch({ type: 'LOG_IN' })
+
+		const user = Users.getUserById(parseInt(userId))
+
+		dispatch(fetchRmIssues(user.ids.rm))
+		dispatch(setBoards())
+		dispatch(fetchGitlabIssues())
+	}
+}, 'PUT', {
+	name,
+	password,
+})
+export const logOutUser = () => dispatch => dispatch({ type: 'LOG_OUT' })
+
+/* ============================= GITLAB REDUCER ACTIONS ============================= */
+export const addGitlabIssue = issue => dispatch => dispatch({ type: 'ADD_GITLAB_ISSUE', payload: issue })
+export const setBoards = () => dispatch => REST.gl(
+	`projects/${systems.gitlab.projectId}/boards`,
+	data => {
+		if (data && data.length) {
+			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
+		}
+	},
+)
+export const fetchGitlabIssues = () => dispatch => REST.gl(
+	`groups/02/issues?state=opened&per_page=100`,
+	response => {
+		dispatch({ type: 'SET_GITLAB_ISSUES', payload: response })
+	},
+)
+export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
-export const setUser = userId => dispatch => dispatch({ type: 'SET_USER', payload: userId })
-export const setGitlabUser = userId => dispatch => dispatch({ type: 'SET_GITLAB_USER', payload: userId })
 export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })
 
 /* ============================= REDMINE REDUCER ACTIONS ============================= */
-export const fetchIssues = userId => dispatch => REST.rm(
+export const fetchRmIssues = userId => dispatch => REST.rm(
 	`issues.json`,
 	response => dispatch({ type: 'SET_ISSUES', payload: response.issues }),
 	'GET',
@@ -60,20 +111,3 @@ export const setAllAssignees = userIds => dispatch => {
 /*
 }
 */
-
-/* ============================= GITLAB REDUCER ACTIONS ============================= */
-export const setBoards = () => dispatch => REST.gl(
-	`projects/${systems.gitlab.projectId}/boards`,
-	data => {
-		if (data && data.length) {
-			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
-		}
-	},
-)
-export const fetchGitlabIssues = () => dispatch => REST.gl(
-	`groups/02/issues?state=opened&per_page=100`,
-	response => {
-		dispatch({ type: 'SET_GITLAB_ISSUES', payload: response })
-	},
-)
-export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })

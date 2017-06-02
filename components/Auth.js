@@ -1,21 +1,33 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 
+import { logUser, logOutUser, fetchRmIssues, setBoards, fetchGitlabIssues } from '../redux/actions'
+import Users from '../modules/Users'
+
 class Auth extends Component {
 
-	_signIn () {
-		console.log(this.props.auth);
+	_logIn () {
+		const { dispatch } = this.props
+
+		dispatch(logUser(this.userName.value, this.userPassword.value))
+	}
+	_logOut () {
+		this.props.dispatch(logOutUser())
 	}
 
 	render () {
-		return this.props.auth.user ? (
-			<button>Log out</button>
+		const { auth: { isLogged, user } } = this.props
+
+		return isLogged ? (
+			<button onClick={() => this._logOut()}>
+				Log out {Users.getUserById(user.id).name}
+			</button>
 		) : (
 			<div>
 				<p><strong>Sign in:</strong></p>
 				<input ref={elm => this.userName = elm} type="text" placeholder="Name" />
 				<input ref={elm => this.userPassword = elm} type="password" placeholder="Password" />
-				<button onClick={() => this._signIn()}>Sign in</button>
+				<button onClick={() => this._logIn()}>Log in</button>
 			</div>
 		)
 	}

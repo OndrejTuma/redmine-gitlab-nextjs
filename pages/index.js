@@ -288,6 +288,9 @@ class Index extends React.Component {
 														this._copyElement(e.target, `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
 													}}>copy timedoctor task</button>
 													<button style={{ marginRight: 10 }} onClick={() => {
+														if (!confirm('Máš mergnuto z produce?')) {
+															return
+														}
 														let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
 														window.open(url,'_blank')
 														//window.location.href = url

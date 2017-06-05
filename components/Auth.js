@@ -24,6 +24,7 @@ class Auth extends Component {
 			</button>
 		) : (
 			<div>
+				<p style={{ textAlign: 'center', fontSize: '1.5em' }}><strong>You must be logged in</strong></p>
 				<p><strong>Sign in:</strong></p>
 				<input ref={elm => this.userName = elm} type="text" placeholder="Name" />
 				<input ref={elm => this.userPassword = elm} type="password" placeholder="Password" />

@@ -2,7 +2,7 @@ import fetch from 'isomorphic-fetch'
 import Link from 'next/link'
 import { renderToString } from 'react-dom/server'
 
-import { systems, mapGitlabStatusToRedmine } from './consts'
+import { systems, statuses } from './consts'
 import { fetchGitlabIssues, fetchRmIssues, addGitlabIssue, addIssue } from './redux/actions'
 
 export const REST = {
@@ -75,7 +75,7 @@ export const GitLab = {
 		}
 	),
 	createIssueFromRm: (dispatch, assigneeId, boards, issue) => {
-		let labels = [assigneeId == 4 ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, mapGitlabStatusToRedmine, boards)].join(',')
+		let labels = [assigneeId == 4 ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, statuses, boards)].join(',')
 
 		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, issue => {
 			if (issue) {
@@ -117,9 +117,7 @@ export const GitLab = {
 
 		gitlabEditWrapper.style.display = 'block'
 	},
-	findIssue: rmIssueId => {
-		const { gitlabIssues } = this.props
-
+	findIssueById: (rmIssueId, gitlabIssues) => {
 		for (let i in gitlabIssues) {
 			if (gitlabIssues.hasOwnProperty(i)) {
 				if (Redmine.findId(gitlabIssues[i].title) == rmIssueId) {
@@ -128,11 +126,11 @@ export const GitLab = {
 			}
 		}
 	},
-	getLabelByRmStatusId: (rmStatusId, mapGitlabStatusToRedmine, boards) => {
+	getLabelByRmStatusId: (rmStatusId, statuses, boards) => {
 		let gitlabBoardId = 0
-		for (let glId in mapGitlabStatusToRedmine) {
-			if (rmStatusId == mapGitlabStatusToRedmine[glId]) {
-				gitlabBoardId = glId
+		for (let key in statuses) {
+			if (statuses.hasOwnProperty(key) && rmStatusId == statuses[key].rm) {
+				gitlabBoardId = statuses[key].gl
 				break
 			}
 		}
@@ -142,6 +140,7 @@ export const GitLab = {
 			}
 		}
 	},
+	/*
 	getUserById: (redmineUserId, redmineUsers, gitlabUsers) => {
 		let userName = redmineUsers.reduce((result, user) => {
 			if (result.id == redmineUserId) {
@@ -159,6 +158,7 @@ export const GitLab = {
 		}
 		return {}
 	},
+	*/
 	updateIssue: (dispatch, gitlabEditWrapper, issueIid, nonBoardLabels, boardLabel, assigneeId, comment = ``) => {
 		let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
 		labels.push(boardLabel)

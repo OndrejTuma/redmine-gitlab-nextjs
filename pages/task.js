@@ -24,9 +24,17 @@ class Task extends Component {
 		}
 
 		let seen = {}
-		return journals.map((journal) => {
+console.log('issue', issue);
+		let users = journals.map((journal) => {
+			if (journal.details && journal.details[0].name === 'assigned_to_id') {
+				console.log(journal.details[0].new_value);
+			}
 			return journal.user
 		}).filter(journal => seen.hasOwnProperty(journal.id) ? false : (seen[journal.id] = true))
+		if (users.indexOf(issue.author) > -1) {
+			users.push(issue.author)
+		}
+		return users
 
 		/*
 		for(let i = journals.length; i--;) {
@@ -135,12 +143,7 @@ class Task extends Component {
 				)
 			}
 		}
-		return  (
-			<div>
-				<p style={{ textAlign: 'center', fontSize: '1.5em' }}><strong>You must be logged in</strong></p>
-				<Auth />
-			</div>
-		)
+		return <Auth />
 	}
 
 }

@@ -8,10 +8,10 @@ import Auth from '../components/Auth'
 
 import Users from '../modules/Users'
 
-import { mapGitlabStatusToRedmine, systems } from '../consts'
+import { systems, statuses } from '../consts'
 import { REST, GitLab, Redmine, Boards } from '../apiController'
 import { nextConnect } from '../store'
-import { addIssue, addGitlabIssue, fetchRmIssues, setBoards, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '../redux/actions'
+import { addIssue, addGitlabIssue, fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
@@ -39,6 +39,15 @@ class Index extends React.Component {
 		GitLab.closeIssue(dispatch, this.gitlabEditWrapper, this.cmnGitlabId.value)
 		Redmine.closeIssue(dispatch, user.ids.rm, this.cmnWrapper, this.cmnRedmineId.value)
 	}
+	_copyElement (elm, text) {
+		let prevText = elm.innerHTML
+
+		copy(text)
+		elm.innerHTML = 'copied'
+		setTimeout(() => {
+			elm.innerHTML = prevText
+		}, 3000)
+	}
 	_editCommonTask (commonTask) {
 		const { boards } = this.props
 		const taskBoard = Boards.getBoardByTaskLabels(commonTask.gitlab.labels, boards)
@@ -48,8 +57,10 @@ class Index extends React.Component {
 		this.cmnGitlabLabels.value = Boards.getNonBoardLabels(commonTask.gitlab.labels, boards).join(',')
 		this.cmnRedmineId.value = commonTask.redmine.id
 		this.cmnGitlabId.value = commonTask.gitlab.iid
-		this.cmnState.value = mapGitlabStatusToRedmine[taskBoard.id] ? mapGitlabStatusToRedmine[taskBoard.id] : this.cmnState.value
-		this.cmnAssignTo.value = commonTask.gitlab.assignee.id
+		this.cmnState.value = taskBoard.id
+		if (commonTask.gitlab.assignee) {
+			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
+		}
 	}
 
 	/**
@@ -84,6 +95,13 @@ class Index extends React.Component {
 		const { dispatch, auth } = this.props
 		const assignee = Users.getUserById(this.cmnAssignTo.value)
 		const user = Users.getUserById(auth.user.id)
+		let rmStatusId
+		for (let key in statuses) {
+			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
+				rmStatusId = statuses[key].rm
+				break
+			}
+		}
 
 		GitLab.updateIssue(
 			dispatch,
@@ -102,7 +120,7 @@ class Index extends React.Component {
 				cmnComment: this.cmnComment
 			},
 			this.cmnRedmineId.value,
-			this.cmnState.value,
+			rmStatusId,
 			assignee.ids.rm,
 			this.cmnComment.value
 		)
@@ -168,7 +186,9 @@ class Index extends React.Component {
 	 * @returns {*}
 	 */
 	pingMeGitlabIssue (rmIssue) {
-		let gitlabIssue = GitLab.findIssue(rmIssue.id)
+		const { gitlabIssues } = this.props
+
+		let gitlabIssue = GitLab.findIssueById(rmIssue.id, gitlabIssues)
 
 		if (!gitlabIssue) {
 			return alert('Error: no GitLab Issue found')
@@ -238,10 +258,10 @@ class Index extends React.Component {
 						<input type="hidden" ref={elm => this.cmnGitlabId = elm}/>
 						Set state: <select ref={elm => this.cmnState = elm}>
 						{boards && boards.map((board, i) => (
-							<option key={i} value={mapGitlabStatusToRedmine[board.id] ? mapGitlabStatusToRedmine[board.id] : 0}>{board.label.name}</option>
+							<option key={i} value={board.id}>{board.label.name}</option>
 						))}
 					</select>
-						<p>Assign to: <select ref={elm => this.cmnAssignTo = elm}>
+						<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={user.id}>
 							{Users && Users.users.map(person => (
 								<option key={person.id} value={person.id}>{person.name}</option>
 							))}
@@ -255,19 +275,16 @@ class Index extends React.Component {
 						{commonTasks && Object.keys(commonTasks).map(key => (
 							<li key={key}>
 								<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
-								<a style={{ marginRight: 10 }} href="#" onClick={(e) => {
-									e.preventDefault()
-									this.innerHTML = 'copied'
-									copy(`feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
-								}}>copy branch name</a>
-								<a style={{ marginRight: 10 }} href="#" onClick={(e) => {
-									e.preventDefault()
-									copy(`${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
-								}}>copy timedoctor task</a>
+								<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
+									this._copyElement(e.target, `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
+								}}>copy branch name</button>
+								<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
+									this._copyElement(e.target, `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
+								}}>copy timedoctor task</button>
 								<button style={{ marginRight: 10 }} onClick={() => {
 									let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
-									//copy(url)
-									window.location.href = url
+									window.open(url,'_blank')
+									//window.location.href = url
 								}}>merge to stage</button>
 								<Link as={`/task/${key}`} href={`/task?id=${key}`}><a style={{ marginRight: 10 }}>rm</a></Link>
 								<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${key}`} target="_blank">
@@ -373,12 +390,7 @@ class Index extends React.Component {
 			</Layout>)
 		}
 
-		return (
-			<div>
-				<p style={{ textAlign: 'center', fontSize: '1.5em' }}><strong>You must be logged in</strong></p>
-				<Auth />
-			</div>
-		)
+		return <Auth />
 	}
 }
 

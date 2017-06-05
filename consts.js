@@ -1,9 +1,27 @@
-export const mapGitlabStatusToRedmine = {
-	2: 4, // To Do: ceka se
-	3: 2, // Progress: ve vyvoji
-	5: 2, // Test: ve vyvoji
-	4: 3, // Deploy: vyreseny
-	7: 4, // Čeká: ceka se
+export const statuses = {
+	todo: {
+		gl: 2,	// To Do
+		rm: 4,	// Čeká se
+	},
+	progress: {
+		gl: 3,	// Progress
+		rm: 2,	// Ve vývoji
+	},
+	test: {
+		gl: 5,	// Test
+		rm: 2,	// Ve vývoji
+	},
+	deploy: {
+		gl: 4,	// Deploy
+		rm: 3,	// Vyřešený
+	},
+	idle: {
+		gl: 7,	// Čeká
+		rm: 4,	// Čeká se
+	},
+	closed: {
+		rm: 5,	// Uzavřený
+	},
 }
 export const systems = {
 	redmine: {

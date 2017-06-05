@@ -55,11 +55,19 @@ const globalReducer = (state = {
 	}
 }
 const redmineReducer = (state = {
+	assignees: [],
 	issues: [],
 	issue: {},
 	statuses: [],
 }, action) => {
 	switch (action.type) {
+		case 'SET_ASSIGNEES': return Object.assign({}, state, {
+			assignees: action.payload,
+		})
+		case 'ADD_ASSIGNEE': return {
+			...state,
+			assignees: [action.payload, ...state.assignees],
+		}
 		case 'SET_ISSUES': return Object.assign({}, state, {
 			issues: action.payload,
 		})

@@ -2,10 +2,11 @@ import { Component } from 'react'
 import Layout from '../components/Layout'
 
 import Auth from '../components/Auth'
+import Users from '../modules/Users'
 
 import { systems } from '../consts'
 import { nextConnect } from '../store'
-import { fetchIssue, setStatuses } from '../redux/actions'
+import { fetchIssue, setStatuses, setAssignees, addAssignee } from '../redux/actions'
 import { REST } from '../apiController'
 
 class Task extends Component {
@@ -13,7 +14,9 @@ class Task extends Component {
 		const { dispatch, url: { query: { id } } } = this.props
 
 		dispatch(setStatuses())
-		dispatch(fetchIssue(id))
+		dispatch(fetchIssue(id, ({ issue }) => {
+			dispatch(setAssignees(this.getAllAssignees(issue)))
+		}))
 	}
 
 	getAllAssignees (issue) {
@@ -23,36 +26,47 @@ class Task extends Component {
 			return
 		}
 
-		let seen = {}
-console.log('issue', issue);
-		let users = journals.map((journal) => {
-			if (journal.details && journal.details[0].name === 'assigned_to_id') {
-				console.log(journal.details[0].new_value);
+		let userIds = journals.reduce((result, journal) => {
+			if (result.indexOf(journal.user.id) === -1) {
+				result.push(journal.user.id)
 			}
-			return journal.user
-		}).filter(journal => seen.hasOwnProperty(journal.id) ? false : (seen[journal.id] = true))
-		if (users.indexOf(issue.author) > -1) {
-			users.push(issue.author)
-		}
-		return users
+			if (journal.details && journal.details.length && journal.details[0].name === 'assigned_to_id') {
+				let newUserId = parseInt(journal.details[0].new_value)
+				if (result.indexOf(newUserId) === -1) {
+					result.push(newUserId)
+				}
+			}
+			return result
+		}, [])
 
-		/*
-		for(let i = journals.length; i--;) {
-			if (
-				journals[i].details.length &&
-				journals[i].details[0].name == 'assigned_to_id' &&
-				!assignees[journals[i].user.id]
-			) {
-				console.log('getAllAssignees add:', journals[i].user);
-				assignees[journals[i].user.id] = journals[i].user.name
+		// if author is not included, we fix it
+		if (userIds.indexOf(issue.author.id) === -1) {
+			userIds.push(issue.author.id)
+		}
+
+		return userIds.reduce((result, userId) => {
+			let userName = Users.getUserByRmId(userId).name
+
+			if (userName) {
+				result.push({
+					id: userId,
+					name: userName
+				})
 			}
-		}
-		// in case author is not yet included
-		if (!assignees[issue.author.id]) {
-			assignees[issue.author.id] = issue.author.name
-		}
-		return assignees
-		*/
+			else {
+				REST.rm(`users/${userId}.json`, (data) => {
+					if (data.user) {
+						const { user } = data
+						this.props.dispatch(addAssignee({
+							id: user.id,
+							name: `${user.firstname} ${user.lastname}`
+						}))
+					}
+				})
+			}
+
+			return result
+		}, [])
 	}
 	getLastTextComment (issue) {
 		const { journals } = issue
@@ -94,12 +108,11 @@ console.log('issue', issue);
 	}
 
 	render() {
-		const { issue, statuses, auth } = this.props
+		const { issue, statuses, auth, assignees } = this.props
 
 		if (issue && Object.keys(issue).length) {
 			let { status: { name, id: status_id } } = issue
 			let lastTextComment = this.getLastTextComment(issue)
-			let assignees = this.getAllAssignees(issue)
 
 			if (auth.isLogged) {
 				return (
@@ -152,4 +165,5 @@ export default nextConnect(state => ({
 	auth: state.auth,
 	issue: state.redmine.issue,
 	statuses: state.redmine.statuses,
+	assignees: state.redmine.assignees,
 }))(Task)

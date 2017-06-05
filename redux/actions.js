@@ -64,12 +64,16 @@ export const fetchRmIssues = userId => dispatch => REST.rm(
 	'GET',
 	{ assigned_to_id: userId }
 )
+export const setAssignees = assignees => dispatch => dispatch({ type: 'SET_ASSIGNEES', payload: assignees })
+export const addAssignee = assignee => dispatch => dispatch({ type: 'ADD_ASSIGNEE', payload: assignee })
 export const addIssue = issue => dispatch => dispatch({ type: 'ADD_ISSUE', payload: issue })
 export const fetchIssue = (id, callback) => dispatch => REST.rm(
 	`issues/${id}.json?include=journals,attachments`,
 	data => {
 		dispatch({ type: 'SET_ISSUE', payload: data.issue })
-		// dispatch(setAllAssignees(getAllAssignees(data.issue)))
+		if (typeof callback === 'function') {
+			callback(data)
+		}
 	}
 )
 export const setStatuses = () => dispatch => REST.rm(

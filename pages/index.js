@@ -256,11 +256,11 @@ class Index extends React.Component {
 						<input type="hidden" ref={elm => this.cmnGitlabLabels = elm}/>
 						<input type="hidden" ref={elm => this.cmnRedmineId = elm}/>
 						<input type="hidden" ref={elm => this.cmnGitlabId = elm}/>
-						Set state: <select ref={elm => this.cmnState = elm}>
-						{boards && boards.map((board, i) => (
-							<option key={i} value={board.id}>{board.label.name}</option>
-						))}
-					</select>
+						Set state:  <select ref={elm => this.cmnState = elm}>
+							{boards && boards.map((board, i) => (
+								<option key={i} value={board.id}>{board.label.name}</option>
+							))}
+						</select>
 						<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={user.id}>
 							{Users && Users.users.map(person => (
 								<option key={person.id} value={person.id}>{person.name}</option>
@@ -271,31 +271,42 @@ class Index extends React.Component {
 						<button onClick={() => this._updateCommonTask()}>Update task</button>
 						<button onClick={() => this._closeCommonTask()}>Close task</button>
 					</div>
-					<ol>
-						{commonTasks && Object.keys(commonTasks).map(key => (
-							<li key={key}>
-								<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
-								<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-									this._copyElement(e.target, `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
-								}}>copy branch name</button>
-								<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-									this._copyElement(e.target, `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
-								}}>copy timedoctor task</button>
-								<button style={{ marginRight: 10 }} onClick={() => {
-									let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
-									window.open(url,'_blank')
-									//window.location.href = url
-								}}>merge to stage</button>
-								<Link as={`/task/${key}`} href={`/task?id=${key}`}><a style={{ marginRight: 10 }}>rm</a></Link>
-								<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${key}`} target="_blank">
-									<img src="../static/images/rm.png" alt="Redmine" width={20}/>
-								</a>
-								<a style={{ marginRight: 10 }} href={`${systems.gitlab.issueUrl}${commonTasks[key].gitlab.iid}`} target="_blank">
-									<img src="../static/images/gl.png" alt="GitLab" width={20}/>
-								</a>
+					{boards && commonTasks && boards.map(board => (
+						<ul style={{ listStyle: 'none' }}>
+							<li>
+								<strong>{board.label.name}</strong>
+								<ol>
+									{Object.keys(commonTasks).map(key => {
+										if (commonTasks[key].gitlab.labels.indexOf(board.label.name) > -1) {
+											return (
+												<li key={key}>
+													<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
+													<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
+														this._copyElement(e.target, `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
+													}}>copy branch name</button>
+													<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
+														this._copyElement(e.target, `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
+													}}>copy timedoctor task</button>
+													<button style={{ marginRight: 10 }} onClick={() => {
+														let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
+														window.open(url,'_blank')
+														//window.location.href = url
+													}}>merge to stage</button>
+													<Link as={`/task/${key}`} href={`/task?id=${key}`}><a style={{ marginRight: 10 }}>rm</a></Link>
+													<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${key}`} target="_blank">
+														<img src="../static/images/rm.png" alt="Redmine" width={20}/>
+													</a>
+													<a style={{ marginRight: 10 }} href={`${systems.gitlab.issueUrl}${commonTasks[key].gitlab.iid}`} target="_blank">
+														<img src="../static/images/gl.png" alt="GitLab" width={20}/>
+													</a>
+												</li>
+											)
+										}
+									})}
+								</ol>
 							</li>
-						))}
-					</ol>
+						</ul>
+					))}
 				</div>
 				<div style={{ float: 'left', width: '49%' }}>
 					<h2>Redmine tasks:</h2>

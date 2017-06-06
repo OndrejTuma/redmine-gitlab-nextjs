@@ -143,25 +143,6 @@ export const GitLab = {
 			}
 		}
 	},
-	/*
-	getUserById: (redmineUserId, redmineUsers, gitlabUsers) => {
-		let userName = redmineUsers.reduce((result, user) => {
-			if (result.id == redmineUserId) {
-				return result.name
-			}
-			if (user.id == redmineUserId) {
-				return user.name
-			}
-			return result
-		}, redmineUsers[0])
-		for (let i in gitlabUsers) {
-			if (gitlabUsers[i].name == userName) {
-				return gitlabUsers[i]
-			}
-		}
-		return {}
-	},
-	*/
 	updateIssue: (dispatch, gitlabEditWrapper, issueIid, nonBoardLabels, boardLabel, assigneeId, comment = ``) => {
 		let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
 		labels.push(boardLabel)

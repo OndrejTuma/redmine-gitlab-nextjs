@@ -24,13 +24,13 @@ class CommonTasks extends Component {
 	 */
 	_findCommonTasks () {
 		const { issues, gitlabIssues } = this.props
-
 		let issueIds = issues.map((issue) => {
 			return issue.id
 		})
 
 		return gitlabIssues.reduce((result, issue) => {
 			let rmId = Redmine.findId(issue.title)
+
 			if (issueIds.indexOf(rmId) > -1) {
 				result[rmId] = {
 					redmine: Redmine.getIssue(issues, rmId),
@@ -217,84 +217,30 @@ const BoardTask = DragSource(ItemTypes.BOARD, {
 			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
 		}
 	}
-	_update () {
-		const { dispatch, userId } = this.props
-		const { gitlab: { iid: glId }, redmine: { id: rmId } } = commonTask
-
-		const assignee = Users.getUserById(this.cmnAssignTo.value)
-		const user = Users.getUserById(userId)
-		let rmStatusId
-
-		for (let key in statuses) {
-			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
-				rmStatusId = statuses[key].rm
-				break
-			}
-		}
-
-		GitLab.updateIssue(
-			dispatch,
-			null,
-			glId,
-			this.cmnGitlabLabels.value,
-			this.cmnState[this.cmnState.selectedIndex].text,
-			assignee.ids.gl,
-			this.cmnComment.value
-		)
-		Redmine.updateIssue(
-			dispatch,
-			user.ids.rm,
-			{
-				cmnWrapper: this.cmnWrapper,
-				cmnComment: this.cmnComment
-			},
-			rmId,
-			rmStatusId,
-			assignee.ids.rm,
-			this.cmnComment.value
-		)
-	}
 	/**
 	 * updates Redmine and GitLab task
 	 * @param commonTask
 	 * @private
 	 */
 	_updateTask (commonTask) {
-		const { dispatch, userId } = this.props
-		const { gitlab: { iid: glId }, redmine: { id: rmId } } = commonTask
-		
+		const { dispatch, boards, userId } = this.props
 		const assignee = Users.getUserById(this.cmnAssignTo.value)
 		const user = Users.getUserById(userId)
+		let labels = Boards.getNonBoardLabels(commonTask.gitlab.labels, boards)
+
+		labels.push(this.cmnState[this.cmnState.selectedIndex].text)
+
+		let glBoard = Boards.getBoardByTaskLabels(labels, boards)
 		let rmStatusId
-		
 		for (let key in statuses) {
-			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
+			if (statuses.hasOwnProperty(key) && statuses[key].gl === glBoard.id) {
 				rmStatusId = statuses[key].rm
 				break
 			}
 		}
 
-		GitLab.updateIssue(
-			dispatch,
-			null,
-			glId,
-			this.cmnGitlabLabels.value,
-			this.cmnState[this.cmnState.selectedIndex].text,
-			assignee.ids.gl,
-			this.cmnComment.value
-		)
-		Redmine.updateIssue(
-			dispatch,
-			user.ids.rm,
-			{
-				cmnWrapper: this.cmnWrapper,
-				cmnComment: this.cmnComment
-			},
-			rmId,
-			rmStatusId,
-			assignee.ids.rm,
-			this.cmnComment.value
-		)
+		dispatch(updateGitlabIssue(commonTask.gitlab, assignee.ids.gl, labels.join(','), 'reopen', this.cmnComment.value))
+		dispatch(updateRedmineIssue(commonTask.redmine, user.ids.rm, assignee.ids.rm, rmStatusId, this.cmnComment.value))
 	}
 
 	render () {

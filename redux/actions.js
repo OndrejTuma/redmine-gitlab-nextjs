@@ -114,9 +114,7 @@ export const setStatuses = () => dispatch => REST.rm(
 export const updateRedmineIssue = (issue, userId, assigned_to_id, status_id, notes = '') => dispatch => {
 	return REST.rm(
 		`issues/${issue.id}.json`,
-		() => {
-			dispatch(fetchRmIssues(userId))
-		},
+		() => dispatch(fetchRmIssues(userId)),
 		'PUT',
 		{
 			issue: {

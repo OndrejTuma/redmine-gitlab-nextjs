@@ -10,7 +10,7 @@ import { GitLab, Redmine, Boards } from '../apiController'
 import Users from '../modules/Users'
 
 import { systems, statuses } from '../consts'
-import { addIssue, addGitlabIssue } from '../redux/actions'
+import { addIssue, addGitlabIssue, updateGitlabIssue } from '../redux/actions'
 
 const ItemTypes = {
 	BOARD: 'board'
@@ -98,11 +98,11 @@ class CommonTasks extends Component {
 				</div>
 				<style>{`
 					.task-list { display: table; list-style: none; padding-left: 0; table-layout: fixed; width: 100%; }
-					.task-list li { display: table-cell; vertical-align: top; padding: 0 10px; }
-					.task-list li + li { border-left: 1px dashed #ccc; }
-					.task-list .heading { display: block; margin-bottom: 1em; text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
+					.task-list li { display: table-cell; vertical-align: top; }
+					.task-list li + li { border-left: 1px dashed #000; }
+					.task-list .heading { color: #222; display: block; margin-bottom: 1em; text-align: center; border-bottom: 1px dashed #000; padding: 10px 0; }
 
-					.board { padding-left: 15px; }
+					.board { padding: 0 10px 0 25px; }
 					.board li { display: list-item; margin-bottom: 1em; padding: 0; }
 					.board li + li { border-left: none; }
 
@@ -111,7 +111,7 @@ class CommonTasks extends Component {
 				`}</style>
 				<ul className="task-list">
 					{boards && commonTasks && boards.map(board => (
-						<Board key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} tasks={commonTasks} />
+						<Board key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={commonTasks} />
 					))}
 				</ul>
 			</TaskBoards>
@@ -121,16 +121,16 @@ class CommonTasks extends Component {
 
 const Board = DropTarget(ItemTypes.BOARD, {
 	drop(props, monitor) {
-		console.log('drop',props, monitor.getDropResult())
+		//console.log('drop',props, monitor.getDropResult())
 		return props
 	},
 }, (connect, monitor) => ({
 	connectDropTarget: connect.dropTarget(),
 	isOver: monitor.isOver(),
 	canDrop: monitor.canDrop(),
-}))(({ userId, boards, dispatch, tasks, name, connectDropTarget }) => connectDropTarget(
+}))(({ userId, board, boards, dispatch, tasks, name, connectDropTarget }) => connectDropTarget(
 	<li>
-		<strong className="heading">{name}</strong>
+		<strong className="heading" style={{ backgroundColor: board.label.color }}>{name}</strong>
 		<ol className="board">
 			{Object.keys(tasks).map(key => {
 				if (tasks[key].gitlab.labels.indexOf(name) > -1) {
@@ -142,11 +142,20 @@ const Board = DropTarget(ItemTypes.BOARD, {
 ))
 const BoardTask = DragSource(ItemTypes.BOARD, {
 	beginDrag(props) {
-		console.log('beginDrag',props);
+		//console.log('beginDrag',props);
 		return {};
 	},
 	endDrag(props, monitor) {
-		console.log('endDrag',props, monitor.getDropResult())
+		if (monitor.didDrop()) {
+			const { dispatch, task, boards, userId } = props
+			let result = monitor.getDropResult()
+
+			let nonBoardLabels = Boards.getNonBoardLabels(task.gitlab.labels, boards).join(',')
+			let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
+			labels.push(result.name)
+
+			dispatch(updateGitlabIssue(task.gitlab, task.gitlab.assignee.id, labels.join(',')))
+		}
 	},
 }, (connect, monitor) => ({
 	connectDragSource: connect.dragSource(),
@@ -197,6 +206,43 @@ const BoardTask = DragSource(ItemTypes.BOARD, {
 		if (commonTask.gitlab.assignee) {
 			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
 		}
+	}
+	_update () {
+		const { dispatch, userId } = this.props
+		const { gitlab: { iid: glId }, redmine: { id: rmId } } = commonTask
+
+		const assignee = Users.getUserById(this.cmnAssignTo.value)
+		const user = Users.getUserById(userId)
+		let rmStatusId
+
+		for (let key in statuses) {
+			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
+				rmStatusId = statuses[key].rm
+				break
+			}
+		}
+
+		GitLab.updateIssue(
+			dispatch,
+			null,
+			glId,
+			this.cmnGitlabLabels.value,
+			this.cmnState[this.cmnState.selectedIndex].text,
+			assignee.ids.gl,
+			this.cmnComment.value
+		)
+		Redmine.updateIssue(
+			dispatch,
+			user.ids.rm,
+			{
+				cmnWrapper: this.cmnWrapper,
+				cmnComment: this.cmnComment
+			},
+			rmId,
+			rmStatusId,
+			assignee.ids.rm,
+			this.cmnComment.value
+		)
 	}
 	/**
 	 * updates Redmine and GitLab task

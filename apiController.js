@@ -67,7 +67,10 @@ export const Boards = {
 export const GitLab = {
 	closeIssue: (dispatch, gitlabEditWrapper, issueIid) => REST.gl(
 		`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
-			gitlabEditWrapper.style.display = 'none'
+			if (gitlabEditWrapper) {
+				gitlabEditWrapper.style.display = 'none'
+
+			}
 			dispatch(fetchGitlabIssues())
 		}, 'PUT', {
 			issue_iid: issueIid,
@@ -188,8 +191,10 @@ export const GitLab = {
 export const Redmine = {
 	closeIssue: (dispatch, userId, cmnWrapper, issueId) => REST.rm(
 		`issues/${issueId}.json`, () => {
-			cmnWrapper.style.display = 'none'
 			dispatch(fetchRmIssues(userId))
+			if (cmnWrapper) {
+				cmnWrapper.style.display = 'none'
+			}
 		}, 'PUT', {
 			issue: {
 				status_id: 5 // Uzavřený
@@ -286,7 +291,7 @@ export const restFetch = (url, callback, method = `GET`, data) => {
 				if (!response.ok) {
 					alert(`Fetch on url ( ${response.url} ) failed: ${response.status} - ${response.statusText}`)
 				}
-				if (['GET', 'POST'].indexOf(method) > -1) {
+				if (['GET', 'POST', 'PUT'].indexOf(method) > -1) {
 					return response.json()
 				}
 			},

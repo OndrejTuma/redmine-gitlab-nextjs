@@ -38,6 +38,29 @@ export const logOutUser = () => dispatch => dispatch({ type: 'LOG_OUT' })
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
 export const addGitlabIssue = issue => dispatch => dispatch({ type: 'ADD_GITLAB_ISSUE', payload: issue })
+export const updateGitlabIssue = (issue, assignee_id, labels, state_event = 'reopen', comment = '') => dispatch => {
+	return REST.gl(
+		`projects/${systems.gitlab.projectId}/issues/${issue.iid}`,
+		data => {
+			if (comment) {
+				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issue.iid}/notes`, () => {
+					dispatch(fetchGitlabIssues())
+				}, 'POST', {
+					body: comment
+				})
+			}
+			else {
+				dispatch(fetchGitlabIssues())
+			}
+		},
+		'PUT',
+		{
+			assignee_id,
+			labels,
+			state_event,
+		}
+	)
+}
 export const setBoards = () => dispatch => REST.gl(
 	`projects/${systems.gitlab.projectId}/boards`,
 	data => {

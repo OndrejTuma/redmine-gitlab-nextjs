@@ -41,7 +41,7 @@ export const addGitlabIssue = issue => dispatch => dispatch({ type: 'ADD_GITLAB_
 export const updateGitlabIssue = (issue, assignee_id, labels, state_event = 'reopen', comment = '') => dispatch => {
 	return REST.gl(
 		`projects/${systems.gitlab.projectId}/issues/${issue.iid}`,
-		data => {
+		() => {
 			if (comment) {
 				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issue.iid}/notes`, () => {
 					dispatch(fetchGitlabIssues())
@@ -111,6 +111,22 @@ export const setStatuses = () => dispatch => REST.rm(
 		}, [])
 	})
 )
+export const updateRedmineIssue = (issue, userId, assigned_to_id, status_id, notes = '') => dispatch => {
+	return REST.rm(
+		`issues/${issue.id}.json`,
+		() => {
+			dispatch(fetchRmIssues(userId))
+		},
+		'PUT',
+		{
+			issue: {
+				assigned_to_id,
+				status_id,
+				notes,
+			},
+		}
+	)
+}
 /*
 export const resetAssignees = () => dispatch => dispatch({ type: 'RESET_ASSIGNEES' })
 export const setAllAssignees = userIds => dispatch => {

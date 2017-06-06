@@ -10,7 +10,7 @@ import { GitLab, Redmine, Boards } from '../apiController'
 import Users from '../modules/Users'
 
 import { systems, statuses } from '../consts'
-import { addIssue, addGitlabIssue, updateGitlabIssue } from '../redux/actions'
+import { addIssue, addGitlabIssue, updateGitlabIssue, updateRedmineIssue } from '../redux/actions'
 
 const ItemTypes = {
 	BOARD: 'board'
@@ -147,14 +147,24 @@ const BoardTask = DragSource(ItemTypes.BOARD, {
 	},
 	endDrag(props, monitor) {
 		if (monitor.didDrop()) {
-			const { dispatch, task, boards, userId } = props
-			let result = monitor.getDropResult()
+			let labelName = monitor.getDropResult().name
+			const { dispatch, task, boards } = props
+			let labels = Boards.getNonBoardLabels(task.gitlab.labels, boards)
 
-			let nonBoardLabels = Boards.getNonBoardLabels(task.gitlab.labels, boards).join(',')
-			let labels = nonBoardLabels ? nonBoardLabels.split(',') : []
-			labels.push(result.name)
+			labels.push(labelName)
 
 			dispatch(updateGitlabIssue(task.gitlab, task.gitlab.assignee.id, labels.join(',')))
+
+			let glBoard = Boards.getBoardByTaskLabels(labels, boards)
+			let rmStatusId
+			for (let key in statuses) {
+				if (statuses.hasOwnProperty(key) && statuses[key].gl === glBoard.id) {
+					rmStatusId = statuses[key].rm
+					break
+				}
+			}
+
+			dispatch(updateRedmineIssue(task.redmine, task.redmine.assigned_to.id, task.redmine.assigned_to.id, rmStatusId))
 		}
 	},
 }, (connect, monitor) => ({

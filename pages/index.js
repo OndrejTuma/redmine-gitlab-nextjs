@@ -1,24 +1,23 @@
 import React from 'react'
 import Link from 'next/link'
-import getSlug from 'speakingurl'
 import copy from 'copy-to-clipboard'
 
-import Layout from '../components/Layout'
 import Auth from '../components/Auth'
+import Layout from '../components/Layout'
+import CommonTasks from '../components/CommonTasks'
+import Card from '../components/Card'
 
 import Users from '../modules/Users'
 
-import { systems, statuses } from '../consts'
-import { REST, GitLab, Redmine, Boards } from '../apiController'
+import { systems } from '../consts'
+import { REST, GitLab, Redmine } from '../apiController'
 import { nextConnect } from '../store'
-import { addIssue, addGitlabIssue, fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '../redux/actions'
+import { fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
 class Index extends React.Component {
 	componentDidMount () {
-		//const { dispatch } = this.props
-
 		/* potrebuju si vytvorit novy projekt (intergrace) - potrebuju admin prava
 		restFetch(`${systems.timedoctor.url}companies/${systems.timedoctor.companyId}/users/${systems.timedoctor.users[0].id}/tasks?access_token=${systems.timedoctor.auth}`, (data) => {
 			console.log('task created', data)
@@ -32,13 +31,7 @@ class Index extends React.Component {
 		*/
 	}
 
-	_closeCommonTask () {
-		const { dispatch, auth } = this.props
-		const user = Users.getUserById(auth.user.id)
 
-		GitLab.closeIssue(dispatch, this.gitlabEditWrapper, this.cmnGitlabId.value)
-		Redmine.closeIssue(dispatch, user.ids.rm, this.cmnWrapper, this.cmnRedmineId.value)
-	}
 	_copyElement (elm, text) {
 		let prevText = elm.innerHTML
 
@@ -48,114 +41,7 @@ class Index extends React.Component {
 			elm.innerHTML = prevText
 		}, 3000)
 	}
-	_editCommonTask (commonTask) {
-		const { boards } = this.props
-		const taskBoard = Boards.getBoardByTaskLabels(commonTask.gitlab.labels, boards)
 
-		this.cmnWrapper.style.display = 'block'
-		this.cmnHeading.innerHTML = commonTask.redmine.subject
-		this.cmnGitlabLabels.value = Boards.getNonBoardLabels(commonTask.gitlab.labels, boards).join(',')
-		this.cmnRedmineId.value = commonTask.redmine.id
-		this.cmnGitlabId.value = commonTask.gitlab.iid
-		this.cmnState.value = taskBoard.id
-		if (commonTask.gitlab.assignee) {
-			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
-		}
-	}
-
-	/**
-	 * iterates through Redmine issues and then filters GitLab issues, who has Redmine ID in its name
-	 * @returns {*}
-	 * @private
-	 */
-	_findCommonTasks () {
-		const { issues, gitlabIssues } = this.props
-
-		let issueIds = issues.map((issue) => {
-			return issue.id
-		})
-
-		return gitlabIssues.reduce((result, issue) => {
-			let rmId = Redmine.findId(issue.title)
-			if (issueIds.indexOf(rmId) > -1) {
-				result[rmId] = {
-					redmine: Redmine.getIssue(issues, rmId),
-					gitlab: issue,
-				}
-			}
-			return result
-		}, {})
-	}
-
-	/**
-	 * updates Redmine and GitLab task 
-	 * @private
-	 */
-	_updateCommonTask () {
-		const { dispatch, auth } = this.props
-		const assignee = Users.getUserById(this.cmnAssignTo.value)
-		const user = Users.getUserById(auth.user.id)
-		let rmStatusId
-		for (let key in statuses) {
-			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
-				rmStatusId = statuses[key].rm
-				break
-			}
-		}
-
-		GitLab.updateIssue(
-			dispatch,
-			this.gitlabEditWrapper,
-			this.cmnGitlabId.value,
-			this.cmnGitlabLabels.value,
-			this.cmnState[this.cmnState.selectedIndex].text,
-			assignee.ids.gl,
-			this.cmnComment.value
-		)
-		Redmine.updateIssue(
-			dispatch,
-			user.ids.rm,
-			{
-				cmnWrapper: this.cmnWrapper,
-				cmnComment: this.cmnComment
-			},
-			this.cmnRedmineId.value,
-			rmStatusId,
-			assignee.ids.rm,
-			this.cmnComment.value
-		)
-	}
-
-	/**
-	 * adds issue in Redmine and GitLab, fill name, description (and labels for GitLab) and assign it to current user
-	 */
-	newCommonTask () {
-		const { dispatch } = this.props
-		const assignee = Users.getUserById(this.newAssignee.value)
-
-		REST.rm(`issues.json`, data => {
-			dispatch(addIssue(data.issue))
-			REST.gl(`projects/${systems.gitlab.projectId}/issues`, data => {
-				this.newWrapper.style.display= 'none'
-				this.newDescription.value = ''
-				this.newTitle.value = ''
-				dispatch(addGitlabIssue(data))
-			}, 'POST', {
-				labels: 'To Do,' + (assignee.ids.gl === 4 ? 'Frontend' : 'Backend'),
-				assignee_id: assignee.ids.gl,
-				title: `${data.issue.id} - ${this.newTitle.value}`,
-				description: this.newDescription.value,
-			})
-		}, 'POST', {
-			issue: {
-				project_id: systems.redmine.projectId,
-				status_id: 4, // ceka se
-				subject: this.newTitle.value,
-				description: this.newDescription.value,
-				assigned_to_id: assignee.ids.rm,
-			}
-		})
-	}
 	/**
 	 * Pings Redmine issue to current user
 	 * @param glIssue - GitLab issue
@@ -209,8 +95,6 @@ class Index extends React.Component {
 	render() {
 		const { dispatch, gitlabIssues, issues, boards, myTasksOnly, auth } = this.props
 
-		let commonTasks = this._findCommonTasks()
-
 		if (auth.isLogged) {
 			const user = Users.getUserById(auth.user.id)
 
@@ -246,71 +130,9 @@ class Index extends React.Component {
 						))}
 					</select>
 				</h2>
-				<div>
-					<h2>Common tasks:</h2>
-					<div ref={elm => this.cmnWrapper = elm} style={{ display: 'none' }}>
-						<p style={{ float: `right` }}>
-							<button onClick={() => this.cmnWrapper.style.display = 'none'}>x</button>
-						</p>
-						<p>Editing: <span ref={elm => this.cmnHeading = elm}></span></p>
-						<input type="hidden" ref={elm => this.cmnGitlabLabels = elm}/>
-						<input type="hidden" ref={elm => this.cmnRedmineId = elm}/>
-						<input type="hidden" ref={elm => this.cmnGitlabId = elm}/>
-						Set state:  <select ref={elm => this.cmnState = elm}>
-							{boards && boards.map((board, i) => (
-								<option key={i} value={board.id}>{board.label.name}</option>
-							))}
-						</select>
-						<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={user.id}>
-							{Users && Users.users.map(person => (
-								<option key={person.id} value={person.id}>{person.name}</option>
-							))}
-						</select></p>
-						<textarea ref={elm => this.cmnComment = elm}></textarea>
-						<br/>
-						<button onClick={() => this._updateCommonTask()}>Update task</button>
-						<button onClick={() => this._closeCommonTask()}>Close task</button>
-					</div>
-					{boards && commonTasks && boards.map(board => (
-						<ul style={{ listStyle: 'none' }}>
-							<li>
-								<strong>{board.label.name}</strong>
-								<ol>
-									{Object.keys(commonTasks).map(key => {
-										if (commonTasks[key].gitlab.labels.indexOf(board.label.name) > -1) {
-											return (
-												<li key={key}>
-													<a href="#" onClick={() => this._editCommonTask(commonTasks[key])}>{commonTasks[key].redmine.subject}</a> <small>({commonTasks[key].gitlab.iid} - {key})</small><br/>
-													<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-														this._copyElement(e.target, `feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}`)
-													}}>copy branch name</button>
-													<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-														this._copyElement(e.target, `${commonTasks[key].redmine.subject} - ${systems.redmine.url}issues/${commonTasks[key].redmine.id}`)
-													}}>copy timedoctor task</button>
-													<button style={{ marginRight: 10 }} onClick={() => {
-														if (!confirm('Máš mergnuto z produce?')) {
-															return
-														}
-														let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${commonTasks[key].gitlab.iid}-${commonTasks[key].redmine.id}-${getSlug(commonTasks[key].redmine.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
-														window.open(url,'_blank')
-														//window.location.href = url
-													}}>merge to stage</button>
-													<Link as={`/task/${key}`} href={`/task?id=${key}`}><a style={{ marginRight: 10 }}>rm</a></Link>
-													<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${key}`} target="_blank">
-														<img src="../static/images/rm.png" alt="Redmine" width={20}/>
-													</a>
-													<a style={{ marginRight: 10 }} href={`${systems.gitlab.issueUrl}${commonTasks[key].gitlab.iid}`} target="_blank">
-														<img src="../static/images/gl.png" alt="GitLab" width={20}/>
-													</a>
-												</li>
-											)
-										}
-									})}
-								</ol>
-							</li>
-						</ul>
-					))}
-				</div>
+
+				<CommonTasks/>
+
 				<div style={{ float: 'left', width: '49%' }}>
 					<h2>Redmine tasks:</h2>
 					<ol>
@@ -412,6 +234,7 @@ export default nextConnect(state => ({
 	auth: state.auth,
 	boards: state.gitlab.boards,
 	gitlabIssues: state.gitlab.issues,
+	issues: state.redmine.issues,gitlabIssues: state.gitlab.issues,
 	issues: state.redmine.issues,
 	myTasksOnly: state.gitlab.myTasksOnly,
 	selectedUserId: state.global.selectedUserId,

@@ -216,23 +216,6 @@ export const Redmine = {
 			}
 		}
 	},
-	getUserByGlUserId: (gitlabId, redmineUsers, gitlabUsers) => {
-		let userName = gitlabUsers.reduce((result, user) => {
-			if (result.id == gitlabId) {
-				return result.name
-			}
-			if (user.id == gitlabId) {
-				return user.name
-			}
-			return result
-		}, gitlabUsers[0])
-		for (let i in redmineUsers) {
-			if (redmineUsers[i].name == userName) {
-				return redmineUsers[i]
-			}
-		}
-		return {}
-	},
 	updateIssue: (dispatch, userId, { cmnWrapper, cmnComment }, issueId, statusId, assigneeId, comment = ``) => {
 		return REST.rm(`issues/${issueId}.json`, () => {
 			cmnWrapper.style.display = 'none'

@@ -80,3 +80,6 @@ export const systems = {
 		]
 	},
 }
+export const ItemTypes = {
+	BOARD: 'board'
+}

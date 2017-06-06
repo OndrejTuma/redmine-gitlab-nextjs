@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Component } from 'react'
 import Link from 'next/link'
 
 import Auth from '../components/Auth'
@@ -15,7 +15,7 @@ import { fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '..
 
 //import simpleGit from 'simple-git'
 
-class Index extends React.Component {
+class Index extends Component {
 	componentDidMount () {
 		/* potrebuju si vytvorit novy projekt (intergrace) - potrebuju admin prava
 		restFetch(`${systems.timedoctor.url}companies/${systems.timedoctor.companyId}/users/${systems.timedoctor.users[0].id}/tasks?access_token=${systems.timedoctor.auth}`, (data) => {

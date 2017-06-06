@@ -291,7 +291,7 @@ export const restFetch = (url, callback, method = `GET`, data) => {
 				if (!response.ok) {
 					alert(`Fetch on url ( ${response.url} ) failed: ${response.status} - ${response.statusText}`)
 				}
-				if (['GET', 'POST', 'PUT'].indexOf(method) > -1) {
+				if (['GET', 'POST'].indexOf(method) > -1) {
 					return response.json()
 				}
 			},

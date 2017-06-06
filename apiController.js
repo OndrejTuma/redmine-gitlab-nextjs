@@ -164,7 +164,9 @@ export const GitLab = {
 		labels.push(boardLabel)
 
 		return REST.gl(`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
-			gitlabEditWrapper.style.display = 'none'
+			if (gitlabEditWrapper) {
+				gitlabEditWrapper.style.display = 'none'
+			}
 			if (comment) {
 				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issueIid}/notes`, () => {
 					dispatch(fetchGitlabIssues())

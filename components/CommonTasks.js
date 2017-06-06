@@ -4,6 +4,7 @@ import Link from 'next/link'
 import getSlug from 'speakingurl'
 import HTML5Backend from 'react-dnd-html5-backend'
 import { DragDropContext, DragSource, DropTarget } from 'react-dnd'
+import copy from 'copy-to-clipboard'
 
 import { GitLab, Redmine, Boards } from '../apiController'
 import Users from '../modules/Users'
@@ -11,28 +12,11 @@ import Users from '../modules/Users'
 import { systems, statuses } from '../consts'
 import { addIssue, addGitlabIssue } from '../redux/actions'
 
+const ItemTypes = {
+	BOARD: 'board'
+}
+
 class CommonTasks extends Component {
-	_closeCommonTask () {
-		const { dispatch, auth } = this.props
-		const user = Users.getUserById(auth.user.id)
-
-		GitLab.closeIssue(dispatch, this.gitlabEditWrapper, this.cmnGitlabId.value)
-		Redmine.closeIssue(dispatch, user.ids.rm, this.cmnWrapper, this.cmnRedmineId.value)
-	}
-	_editCommonTask (commonTask) {
-		const { boards } = this.props
-		const taskBoard = Boards.getBoardByTaskLabels(commonTask.gitlab.labels, boards)
-
-		this.cmnWrapper.style.display = 'block'
-		this.cmnHeading.innerHTML = commonTask.redmine.subject
-		this.cmnGitlabLabels.value = Boards.getNonBoardLabels(commonTask.gitlab.labels, boards).join(',')
-		this.cmnRedmineId.value = commonTask.redmine.id
-		this.cmnGitlabId.value = commonTask.gitlab.iid
-		this.cmnState.value = taskBoard.id
-		if (commonTask.gitlab.assignee) {
-			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
-		}
-	}
 	/**
 	 * iterates through Redmine issues and then filters GitLab issues, who has Redmine ID in its name
 	 * @returns {*}
@@ -86,15 +70,147 @@ class CommonTasks extends Component {
 			}
 		})
 	}
+
+	render () {
+		const { auth, boards, dispatch } = this.props
+
+		let commonTasks = this._findCommonTasks()
+
+		return (
+			<TaskBoards>
+				<h2>Common tasks:</h2>
+				<button onClick={() => {
+					this.newWrapper.style.display = 'block'
+					this.newAssignee.value = auth.user.id
+				}}>New task</button>
+				<div ref={elm => this.newWrapper = elm} style={{ display: 'none', clear: 'both' }}>
+					<button style={{ float: 'right' }} onClick={() => this.newWrapper.style.display = 'none'}>x</button>
+					<input type="text" ref={elm => this.newTitle = elm} placeholder={`Issue title`} />
+					<br/>
+					<textarea ref={elm => this.newDescription = elm} placeholder={`Issue description`} ></textarea>
+					<br/>
+					<p>Assign to: <select ref={elm => this.newAssignee = elm} defaultValue={auth.user.id}>
+						{Users && Users.users.map((person) => (
+							<option key={person.id} value={person.id}>{person.name}</option>
+						))}
+					</select></p>
+					<button onClick={() => this.newCommonTask()}>Create</button>
+				</div>
+				<style>{`
+					.task-list { display: table; list-style: none; padding-left: 0; table-layout: fixed; width: 100%; }
+					.task-list li { display: table-cell; vertical-align: top; padding: 0 10px; }
+					.task-list li + li { border-left: 1px dashed #ccc; }
+					.task-list .heading { display: block; margin-bottom: 1em; text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
+
+					.board { padding-left: 15px; }
+					.board li { display: list-item; margin-bottom: 1em; padding: 0; }
+					.board li + li { border-left: none; }
+
+					.icon { display: inline-block; vertical-align: middle; cursor: pointer; margin-right: 10px; }
+					img.icon, .icon img { width: 20px; }
+				`}</style>
+				<ul className="task-list">
+					{boards && commonTasks && boards.map(board => (
+						<Board key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} tasks={commonTasks} />
+					))}
+				</ul>
+			</TaskBoards>
+		)
+	}
+}
+
+const Board = DropTarget(ItemTypes.BOARD, {
+	drop(props, monitor) {
+		console.log('drop',props, monitor.getDropResult())
+		return props
+	},
+}, (connect, monitor) => ({
+	connectDropTarget: connect.dropTarget(),
+	isOver: monitor.isOver(),
+	canDrop: monitor.canDrop(),
+}))(({ userId, boards, dispatch, tasks, name, connectDropTarget }) => connectDropTarget(
+	<li>
+		<strong className="heading">{name}</strong>
+		<ol className="board">
+			{Object.keys(tasks).map(key => {
+				if (tasks[key].gitlab.labels.indexOf(name) > -1) {
+					return <BoardTask dispatch={dispatch} userId={userId} key={key} task={tasks[key]} rmId={key} boards={boards} />
+				}
+			})}
+		</ol>
+	</li>
+))
+const BoardTask = DragSource(ItemTypes.BOARD, {
+	beginDrag(props) {
+		console.log('beginDrag',props);
+		return {};
+	},
+	endDrag(props, monitor) {
+		console.log('endDrag',props, monitor.getDropResult())
+	},
+}, (connect, monitor) => ({
+	connectDragSource: connect.dragSource(),
+	isDragging: monitor.isDragging()
+}))(class extends Component {
 	/**
-	 * updates Redmine and GitLab task
+	 * Closes common task
 	 * @private
 	 */
-	_updateCommonTask () {
-		const { dispatch, auth } = this.props
+	_closeTask (commonTask) {
+		const { dispatch, userId } = this.props
+		const { gitlab: { iid: glId }, redmine: { id: rmId } } = commonTask
+		
+		const user = Users.getUserById(userId)
+
+		GitLab.closeIssue(dispatch, null, glId)
+		Redmine.closeIssue(dispatch, user.ids.rm, this.cmnWrapper, rmId)
+	}
+	/**
+	 * Copies text and notify user by setting target's innerHTML
+	 * @param text string - text to copy to clipboard
+	 * @param elm domNode
+	 * @private
+	 */
+	_copyElement (text, elm) {
+		copy(text)
+
+		if (elm) {
+			let prevText = elm.innerHTML
+			elm.innerHTML = 'copied'
+			setTimeout(() => {
+				elm.innerHTML = prevText
+			}, 3000)
+		}
+	}
+	/**
+	 * Fires before edit task form is shown
+	 * @param commonTask
+	 * @private
+	 */
+	_editTask (commonTask) {
+		const { boards } = this.props
+		const taskBoard = Boards.getBoardByTaskLabels(commonTask.gitlab.labels, boards)
+
+		this.cmnWrapper.style.display = 'block'
+		this.cmnGitlabLabels.value = Boards.getNonBoardLabels(commonTask.gitlab.labels, boards).join(',')
+		this.cmnState.value = taskBoard.id
+		if (commonTask.gitlab.assignee) {
+			this.cmnAssignTo.value = commonTask.gitlab.assignee.id
+		}
+	}
+	/**
+	 * updates Redmine and GitLab task
+	 * @param commonTask
+	 * @private
+	 */
+	_updateTask (commonTask) {
+		const { dispatch, userId } = this.props
+		const { gitlab: { iid: glId }, redmine: { id: rmId } } = commonTask
+		
 		const assignee = Users.getUserById(this.cmnAssignTo.value)
-		const user = Users.getUserById(auth.user.id)
+		const user = Users.getUserById(userId)
 		let rmStatusId
+		
 		for (let key in statuses) {
 			if (statuses.hasOwnProperty(key) && statuses[key].gl === parseInt(this.cmnState.value)) {
 				rmStatusId = statuses[key].rm
@@ -104,8 +220,8 @@ class CommonTasks extends Component {
 
 		GitLab.updateIssue(
 			dispatch,
-			this.gitlabEditWrapper,
-			this.cmnGitlabId.value,
+			null,
+			glId,
 			this.cmnGitlabLabels.value,
 			this.cmnState[this.cmnState.selectedIndex].text,
 			assignee.ids.gl,
@@ -118,7 +234,7 @@ class CommonTasks extends Component {
 				cmnWrapper: this.cmnWrapper,
 				cmnComment: this.cmnComment
 			},
-			this.cmnRedmineId.value,
+			rmId,
 			rmStatusId,
 			assignee.ids.rm,
 			this.cmnComment.value
@@ -126,81 +242,23 @@ class CommonTasks extends Component {
 	}
 
 	render () {
-		const { auth, boards } = this.props
-
-		let commonTasks = this._findCommonTasks()
-
-		const user = Users.getUserById(auth.user.id)
-
-		return (
-			<TaskBoards>
-				<h2>Common tasks:</h2>
-				<div ref={elm => this.cmnWrapper = elm} style={{ display: 'none' }}>
-					<p style={{ float: `right` }}>
-						<button onClick={() => this.cmnWrapper.style.display = 'none'}>x</button>
-					</p>
-					<p>Editing: <span ref={elm => this.cmnHeading = elm}></span></p>
-					<input type="hidden" ref={elm => this.cmnGitlabLabels = elm}/>
-					<input type="hidden" ref={elm => this.cmnRedmineId = elm}/>
-					<input type="hidden" ref={elm => this.cmnGitlabId = elm}/>
-					Set state:  <select ref={elm => this.cmnState = elm}>
-					{boards && boards.map((board, i) => (
-						<option key={i} value={board.id}>{board.label.name}</option>
-					))}
-				</select>
-					<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={user.id}>
-						{Users && Users.users.map(person => (
-							<option key={person.id} value={person.id}>{person.name}</option>
-						))}
-					</select></p>
-					<textarea ref={elm => this.cmnComment = elm}></textarea>
-					<br/>
-					<button onClick={() => this._updateCommonTask()}>Update task</button>
-					<button onClick={() => this._closeCommonTask()}>Close task</button>
-				</div>
-				{boards && commonTasks && boards.map(board => (
-					<ul key={board.label.name} style={{ listStyle: 'none' }}>
-						<li>
-							<strong>{board.label.name}</strong>
-							<Board name={board.label.name} tasks={commonTasks} />
-						</li>
-					</ul>
-				))}
-			</TaskBoards>
-		)
-	}
-}
-const TaskBoards = DragDropContext(HTML5Backend)(({ children }) => (
-	<div className="common-tasks">
-		{children}
-	</div>
-))
-const ItemTypes = {
-	BOARD: 'board'
-}
-const BoardItem = DragSource(ItemTypes.BOARD, {
-	beginDrag(props) {
-		console.log('beginDrag',props);
-		return {};
-	},
-}, (connect, monitor) => {
-	return {
-		connectDragSource: connect.dragSource(),
-		isDragging: monitor.isDragging()
-	}
-})(class BoardItem extends Component {
-	render () {
-		const { task, rmId, connectDragSource } = this.props
+		const { boards, task, rmId, connectDragSource, userId } = this.props
 
 		return connectDragSource(
 			<li>
-				<a href="#" onClick={() => this._editCommonTask(task)}>{task.redmine.subject}</a> <small>({task.gitlab.iid} - {rmId})</small><br/>
-				<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-					this._copyElement(e.target, `feature/${task.gitlab.iid}-${task.redmine.id}-${getSlug(task.redmine.subject)}`)
-				}}>copy branch name</button>
-				<button style={{ marginRight: 10 }} href="#" onClick={(e) => {
-					this._copyElement(e.target, `${task.redmine.subject} - ${systems.redmine.url}issues/${task.redmine.id}`)
-				}}>copy timedoctor task</button>
+				<a href="#" onClick={e => {
+					e.preventDefault()
+					this._editTask(task)
+				}}>{task.redmine.subject}</a> <small>({task.gitlab.iid} - {rmId})</small><br/>
+				<img className="icon" title="Copy branch name" src="../static/images/git.png" onClick={() => this._copyElement(`feature/${task.gitlab.iid}-${task.redmine.id}-${getSlug(task.redmine.subject)}`)}/>
+				<img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png" onClick={() => this._copyElement(`${task.redmine.subject} - ${systems.redmine.url}issues/${task.redmine.id}`)}/>
+				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${rmId}`} target="_blank">
+					<img src="../static/images/rm.png" alt="Redmine"/>
+				</a>
+				<a className="icon" title="Go to GitLab issue" href={`${systems.gitlab.issueUrl}${task.gitlab.iid}`} target="_blank">
+					<img src="../static/images/gl.png" alt="GitLab"/>
+				</a>
+				<br/>
 				<button style={{ marginRight: 10 }} onClick={() => {
 					if (!confirm('Máš mergnuto z produce?')) {
 						return
@@ -210,41 +268,36 @@ const BoardItem = DragSource(ItemTypes.BOARD, {
 					//window.location.href = url
 				}}>merge to stage</button>
 				<Link as={`/task/${rmId}`} href={`/task?id=${rmId}`}><a style={{ marginRight: 10 }}>rm</a></Link>
-				<a style={{ marginRight: 10 }} href={`${systems.redmine.url}issues/${rmId}`} target="_blank">
-					<img src="../static/images/rm.png" alt="Redmine" width={20}/>
-				</a>
-				<a style={{ marginRight: 10 }} href={`${systems.gitlab.issueUrl}${task.gitlab.iid}`} target="_blank">
-					<img src="../static/images/gl.png" alt="GitLab" width={20}/>
-				</a>
+
+				<div ref={elm => this.cmnWrapper = elm} style={{ display: 'none' }}>
+					<p style={{ float: `right` }}>
+						<button onClick={() => this.cmnWrapper.style.display = 'none'}>x</button>
+					</p>
+					<input type="hidden" ref={elm => this.cmnGitlabLabels = elm}/>
+					<p>Set state: <select ref={elm => this.cmnState = elm}>
+						{boards && boards.map((board, i) => (
+							<option key={i} value={board.id}>{board.label.name}</option>
+						))}
+					</select></p>
+					<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={userId}>
+						{Users && Users.users.map(person => (
+							<option key={person.id} value={person.id}>{person.name}</option>
+						))}
+					</select></p>
+					<textarea ref={elm => this.cmnComment = elm}></textarea>
+					<br/>
+					<button onClick={() => this._updateTask(task)}>Update task</button>
+					<button onClick={() => this._closeTask(task)}>Close task</button>
+				</div>
 			</li>
 		)
 	}
 })
-const Board = DropTarget(ItemTypes.BOARD, {
-	drop(props) {
-		console.log('drop',props)
-	},
-}, (connect, monitor) => {
-	return {
-		connectDropTarget: connect.dropTarget(),
-		isOver: monitor.isOver(),
-		canDrop: monitor.canDrop()
-	};
-})(class Board extends Component {
-	render () {
-		const { tasks, name, connectDropTarget, canDrop } = this.props
-
-		return connectDropTarget(
-			<ol className="board">
-				{Object.keys(tasks).map(key => {
-					if (tasks[key].gitlab.labels.indexOf(name) > -1) {
-						return <BoardItem key={key} task={tasks[key]} rmId={key} />
-					}
-				})}
-			</ol>
-		)
-	}
-})
+const TaskBoards = DragDropContext(HTML5Backend)(({ children }) => (
+	<div className="common-tasks">
+		{children}
+	</div>
+))
 
 export default connect(state => ({
 	auth: state.auth,

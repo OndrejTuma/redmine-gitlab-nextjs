@@ -1,7 +1,7 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { Redmine } from '../apiController'
+import { Redmine, REST } from '../apiController'
 import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
@@ -99,7 +99,7 @@ class CommonTasks extends Component {
 					.board li { display: list-item; margin-bottom: 1em; padding: 0; }
 					.board li + li { border-left: none; }
 
-					.icon { display: inline-block; vertical-align: middle; cursor: pointer; margin-right: 10px; }
+					.icon { border-radius: 5px; display: inline-block; vertical-align: middle; cursor: pointer; margin-right: 10px; }
 					img.icon, .icon img { width: 20px; }
 
 					.highlighted { animation: fade 1s 1; }

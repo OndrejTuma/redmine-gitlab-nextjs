@@ -1,6 +1,6 @@
 import fetch from 'isomorphic-fetch'
-import Link from 'next/link'
-import { renderToString } from 'react-dom/server'
+//import Link from 'next/link'
+//import { renderToString } from 'react-dom/server'
 
 import { systems, statuses } from './consts'
 import { fetchGitlabIssues, fetchRmIssues, addGitlabIssue, addIssue } from './redux/actions'
@@ -106,7 +106,7 @@ export const GitLab = {
 		gitlabEditLabels.value = Boards.getNonBoardLabels(issue.labels, boards).join(',')
 		gitlabEdit.value = issue.iid
 		gitlabEditHeading.innerHTML = issue.title
-		gitlabEditRedmine.innerHTML = renderToString(<Link as={`/task/${rmId}`} href={`/task?id=${rmId}`}><a target="_blank">Redmine {rmId}</a></Link>)
+		//gitlabEditRedmine.innerHTML = renderToString(<Link as={`/task/${rmId}`} href={`/task?id=${rmId}`}><a target="_blank">Redmine {rmId}</a></Link>)
 		gitlabEditUser.value = issue.assignee ? issue.assignee.id : gitlabEditUser.value
 		gitlabEditSelect.value = issue.labels.reduce((result, label) => {
 			if (Boards.getLabel(result, boards)) {

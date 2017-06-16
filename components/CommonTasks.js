@@ -6,7 +6,7 @@ import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
 
-import { systems } from '../consts'
+import { systems, statuses } from '../consts'
 import { addIssue, addGitlabIssue } from '../redux/actions'
 
 class CommonTasks extends Component {
@@ -25,13 +25,14 @@ class CommonTasks extends Component {
 			let rmId = Redmine.findId(issue.title)
 
 			if (issueIds.indexOf(rmId) > -1) {
-				result[rmId] = {
+				result.push({
 					redmine: Redmine.getIssue(issues, rmId),
 					gitlab: issue,
-				}
+				})
 			}
+
 			return result
-		}, {})
+		}, [])
 	}
 	/**
 	 * adds issue in Redmine and GitLab, fill name, description (and labels for GitLab) and assign it to current user
@@ -56,7 +57,7 @@ class CommonTasks extends Component {
 		}, 'POST', {
 			issue: {
 				project_id: systems.redmine.projectId,
-				status_id: 4, // ceka se
+				status_id: statuses.idle.rm,
 				subject: this.newTitle.value,
 				description: this.newDescription.value,
 				assigned_to_id: assignee.ids.rm,

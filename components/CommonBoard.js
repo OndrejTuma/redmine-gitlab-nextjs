@@ -6,9 +6,9 @@ const CommonBoard = (({ userId, board, boards, dispatch, tasks, name, connectDro
 	<li>
 		<strong className="heading" style={{ backgroundColor: board.label.color }}>{name}</strong>
 		<ol className="board">
-			{Object.keys(tasks).map(key => {
-				if (tasks[key].gitlab.labels.indexOf(name) > -1) {
-					return <CommonTask dispatch={dispatch} userId={userId} key={key} task={tasks[key]} rmId={key} boards={boards} />
+			{tasks.map((task, i) => {
+				if (task.gitlab.labels.indexOf(name) > -1) {
+					return <CommonTask dispatch={dispatch} userId={userId} key={i} task={task} boards={boards} />
 				}
 			})}
 		</ol>

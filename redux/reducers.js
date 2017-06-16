@@ -41,6 +41,24 @@ const gitlabReducer = (state = {
 			...state,
 			issues: [...state.issues, action.payload],
 		}
+		case 'DELETE_GITLAB_ISSUE': return {
+			...state,
+			issues: state.issues.reduce((result, issue) => {
+				if (issue.iid !== action.payload.iid) {
+					result.push(issue)
+				}
+				return result
+			}, []),
+		}
+		case 'UPDATE_GITLAB_ISSUE': return {
+			...state,
+			issues: state.issues.map(issue => {
+				return (issue.iid === action.payload.iid) ? {
+					...issue,
+					...action.payload,
+				} : issue
+			}),
+		}
 		default: return state
 	}
 }
@@ -74,13 +92,22 @@ const redmineReducer = (state = {
 		case 'SET_ISSUE':  return Object.assign({}, state, {
 			issue: action.payload,
 		})
-		case 'ADD_ISSUE': return {
+		case 'ADD_REDMINE_ISSUE': return {
 			...state,
 			issues: [...state.issues, action.payload],
 		}
 		case 'SET_STATUSES': return Object.assign({}, state, {
 			statuses: action.payload,
 		})
+		case 'DELETE_REDMINE_ISSUE': return {
+			...state,
+			issues: state.issues.reduce((result, issue) => {
+				if (issue.id !== action.payload) {
+					result.push(issue)
+				}
+				return result
+			}, []),
+		}
 		default: return state
 	}
 }

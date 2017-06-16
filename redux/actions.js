@@ -1,4 +1,4 @@
-import { systems } from '../consts'
+import { systems, statuses } from '../consts'
 import { REST, restFetch } from '../apiController'
 import Users from '../modules/Users'
 
@@ -38,29 +38,10 @@ export const logOutUser = () => dispatch => dispatch({ type: 'LOG_OUT' })
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
 export const addGitlabIssue = issue => dispatch => dispatch({ type: 'ADD_GITLAB_ISSUE', payload: issue })
-export const updateGitlabIssue = (issue, assignee_id, labels, state_event = 'reopen', comment = '') => dispatch => {
-	return REST.gl(
-		`projects/${systems.gitlab.projectId}/issues/${issue.iid}`,
-		() => {
-			if (comment) {
-				REST.gl(`/projects/${systems.gitlab.projectId}/issues/${issue.iid}/notes`, () => {
-					dispatch(fetchGitlabIssues())
-				}, 'POST', {
-					body: comment
-				})
-			}
-			else {
-				dispatch(fetchGitlabIssues())
-			}
-		},
-		'PUT',
-		{
-			assignee_id,
-			labels,
-			state_event,
-		}
-	)
-}
+export const fetchGitlabIssues = () => dispatch => REST.gl(
+	`groups/02/issues?state=opened&per_page=100`,
+	response => dispatch({ type: 'SET_GITLAB_ISSUES', payload: response }),
+)
 export const setBoards = () => dispatch => REST.gl(
 	`projects/${systems.gitlab.projectId}/boards`,
 	data => {
@@ -69,13 +50,39 @@ export const setBoards = () => dispatch => REST.gl(
 		}
 	},
 )
-export const fetchGitlabIssues = () => dispatch => REST.gl(
-	`groups/02/issues?state=opened&per_page=100`,
-	response => {
-		dispatch({ type: 'SET_GITLAB_ISSUES', payload: response })
-	},
-)
 export const toggleMyTasksOnly = () => dispatch => dispatch({ type: 'MY_TASKS_TOGGLE' })
+export const updateGitlabIssue = (issue_iid, data, comment = '', callback) => dispatch => {
+	return REST.gl(
+		`projects/${systems.gitlab.projectId}/issues/${issue_iid}`,
+		response => {
+			if (comment) {
+				REST.gl(`projects/${systems.gitlab.projectId}/issues/${issue_iid}/notes`, () => {
+					dispatch(afterGitlabUpdate(data, response, callback))
+				}, 'POST', {
+					body: comment
+				})
+			}
+			else {
+				dispatch(afterGitlabUpdate(data, response, callback))
+			}
+		},
+		'PUT',
+		data
+	)
+}
+const afterGitlabUpdate = (data, response, callback) => dispatch => {
+	if (response) {
+		if (data.state_event && data.state_event === 'close') {
+			dispatch({ type: 'DELETE_GITLAB_ISSUE', payload: response })
+		}
+		else {
+			dispatch({ type: 'UPDATE_GITLAB_ISSUE', payload: response })
+		}
+	}
+	if (typeof callback === 'function') {
+		callback(response)
+	}
+}
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
 export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })
@@ -87,10 +94,16 @@ export const fetchRmIssues = userId => dispatch => REST.rm(
 	'GET',
 	{ assigned_to_id: userId }
 )
+export const fetchRmIssue = id => dispatch => REST.rm(
+	`issues/${id}.json`,
+	response => {
+		dispatch({ type: 'ADD_REDMINE_ISSUE', payload: response.issue })
+	}
+)
 export const setAssignees = assignees => dispatch => dispatch({ type: 'SET_ASSIGNEES', payload: assignees })
 export const addAssignee = assignee => dispatch => dispatch({ type: 'ADD_ASSIGNEE', payload: assignee })
 export const addIssue = issue => dispatch => dispatch({ type: 'ADD_ISSUE', payload: issue })
-export const fetchIssue = (id, callback) => dispatch => REST.rm(
+export const fetchSingleIssue = (id, callback) => dispatch => REST.rm(
 	`issues/${id}.json?include=journals,attachments`,
 	data => {
 		dispatch({ type: 'SET_ISSUE', payload: data.issue })
@@ -111,18 +124,24 @@ export const setStatuses = () => dispatch => REST.rm(
 		}, [])
 	})
 )
-export const updateRedmineIssue = (issue, userId, assigned_to_id, status_id, notes = '') => dispatch => {
+export const updateRedmineIssue = (issue_id, userId, data, callback) => dispatch => {
 	return REST.rm(
-		`issues/${issue.id}.json`,
-		() => dispatch(fetchRmIssues(userId)),
+		`issues/${issue_id}.json`,
+		() => {
+			if (issue_id && data.issue) {
+				if (
+					(data.issue.status_id && data.issue.status_id === statuses.closed.rm) ||
+					(data.issue.assigned_to_id && data.issue.assigned_to_id !== userId)
+				) {
+					dispatch({ type: 'DELETE_REDMINE_ISSUE', payload: issue_id })
+				}
+			}
+			if (typeof callback === 'function') {
+				callback(data)
+			}
+		},
 		'PUT',
-		{
-			issue: {
-				assigned_to_id,
-				status_id,
-				notes,
-			},
-		}
+		data
 	)
 }
 /*

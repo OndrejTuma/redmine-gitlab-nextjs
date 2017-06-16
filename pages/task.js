@@ -6,7 +6,7 @@ import Users from '../modules/Users'
 
 import { systems } from '../consts'
 import { nextConnect } from '../store'
-import { fetchIssue, setStatuses, setAssignees, addAssignee } from '../redux/actions'
+import { fetchSingleIssue, setStatuses, setAssignees, addAssignee } from '../redux/actions'
 import { REST } from '../apiController'
 
 class Task extends Component {
@@ -14,7 +14,7 @@ class Task extends Component {
 		const { dispatch, url: { query: { id } } } = this.props
 
 		dispatch(setStatuses())
-		dispatch(fetchIssue(id, ({ issue }) => {
+		dispatch(fetchSingleIssue(id, ({ issue }) => {
 			dispatch(setAssignees(this.getAllAssignees(issue)))
 		}))
 	}
@@ -87,7 +87,7 @@ class Task extends Component {
 		const { issue: { id }, dispatch } = this.props
 
 		return REST.rm(`issues/${id}.json`, () => {
-			dispatch(fetchIssue(id))
+			dispatch(fetchSingleIssue(id))
 			this.updateForm.style.display = 'none'
 			this.textarea.value = ''
 		}, 'PUT', {
@@ -104,7 +104,7 @@ class Task extends Component {
 	updateIssueStatus(statusId) {
 		let { issue: { id }, dispatch } = this.props
 
-		return REST.rm(`issues/${id}.json`, () => dispatch(fetchIssue(id)), 'PUT', { issue: { status_id: statusId } })
+		return REST.rm(`issues/${id}.json`, () => dispatch(fetchSingleIssue(id)), 'PUT', { issue: { status_id: statusId } })
 	}
 
 	render() {

@@ -69,7 +69,6 @@ export const GitLab = {
 		`projects/${systems.gitlab.projectId}/issues/${issueIid}`, () => {
 			if (gitlabEditWrapper) {
 				gitlabEditWrapper.style.display = 'none'
-
 			}
 			dispatch(fetchGitlabIssues())
 		}, 'PUT', {
@@ -255,9 +254,15 @@ export const restFetch = (url, callback, method = `GET`, data) => {
 				if (!response.ok) {
 					alert(`Fetch on url ( ${response.url} ) failed: ${response.status} - ${response.statusText}`)
 				}
+				else {
+					return response.text().then(text => (text ? JSON.parse(text) : {}))
+					// return response.json()
+				}
+				/*
 				if (['GET', 'POST'].indexOf(method) > -1) {
 					return response.json()
 				}
+				*/
 			},
 			error => console.error('Error occured while fetching:', error)
 		)

@@ -4,14 +4,13 @@ import Link from 'next/link'
 import Auth from '../components/Auth'
 import Layout from '../components/Layout'
 import CommonTasks from '../components/CommonTasks'
-import Card from '../components/Card'
 
 import Users from '../modules/Users'
 
 import { systems } from '../consts'
-import { REST, GitLab, Redmine } from '../apiController'
+import { GitLab, Redmine } from '../apiController'
 import { nextConnect } from '../store'
-import { fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser } from '../redux/actions'
+import { fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser, updateGitlabIssue, updateRedmineIssue, fetchRmIssue } from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
@@ -39,20 +38,17 @@ class Index extends Component {
 		const rmId = Redmine.findId(glIssue.title)
 
 		if (!rmId) {
-			return
+			return alert('No Redmine Issue found. Create it first')
 		}
 
 		const { dispatch, auth } = this.props
+		const userRmId = Users.getUserById(auth.user.id).ids.rm
 
-		if (auth.isLogged) {
-			const userRmId = Users.getUserById(auth.user.id).ids.rm
-
-			return REST.rm(`issues/${rmId}.json`, () => dispatch(fetchRmIssues(userRmId)), 'PUT', {
-				issue: {
-					assigned_to_id : userRmId,
-				}
-			})
-		}
+		return dispatch(updateRedmineIssue(rmId, userRmId, {
+			issue: {
+				assigned_to_id : userRmId,
+			}
+		}, () => dispatch(fetchRmIssue(rmId))))
 	}
 	/**
 	 * Pings GitLab issue to current user
@@ -65,18 +61,14 @@ class Index extends Component {
 		let gitlabIssue = GitLab.findIssueById(rmIssue.id, gitlabIssues)
 
 		if (!gitlabIssue) {
-			return alert('Error: no GitLab Issue found. You must create it first')
+			return alert('No GitLab Issue found. Create it first')
 		}
 
 		const { dispatch, auth } = this.props
 
-		if (auth.isLogged) {
-			const userGlId = Users.getUserById(auth.user.id).ids.gl
-
-			return REST.gl(`projects/${systems.gitlab.projectId}/issues/${gitlabIssue.iid}`, () => dispatch(fetchGitlabIssues()), 'PUT', {
-				assignee_id: userGlId,
-			})
-		}
+		return dispatch(updateGitlabIssue(gitlabIssue.iid, {
+			assignee_id: Users.getUserById(auth.user.id).ids.gl,
+		}))
 	}
 
 
@@ -137,13 +129,28 @@ class Index extends Component {
 								))}
 							</select></p>
 							<p>Assign to: <select ref={elm => this.gitlabEditUser = elm}>
-								{systems.gitlab.users.map(person => (
-									<option key={person.id} value={person.id}>{person.name}</option>
+								{Users.users.map(person => (
+									<option key={person.ids.gl} value={person.ids.gl}>{person.name}</option>
 								))}
 							</select></p>
-							<textarea ></textarea>
-							<button onClick={() => GitLab.updateIssue(this.props.dispatch, this.gitlabEditWrapper, this.gitlabEdit.value, this.gitlabEditLabels.value, this.gitlabEditSelect.value, this.gitlabEditUser.value)}>Update</button>
-							<button onClick={() => GitLab.closeIssue(this.props.dispatch, this.gitlabEditWrapper, this.gitlabEdit.value)}>Close</button>
+							<textarea ref={elm => this.gitlabEditComment = elm}></textarea>
+							<button onClick={() => {
+								let labels = this.gitlabEditLabels.value.split(',')
+								labels.push(this.gitlabEditSelect.value)
+
+								dispatch(updateGitlabIssue(this.gitlabEdit.value, {
+									labels: labels.join(','),
+									assignee_id: this.gitlabEditUser.value,
+								}, this.gitlabEditComment.value, () => this.gitlabEditWrapper.style.display = 'none'))
+							}}>Update</button>
+							<button onClick={() => {
+
+								dispatch(updateGitlabIssue(this.gitlabEdit.value, {
+									state_event: 'close'
+								}))
+
+								GitLab.closeIssue(this.props.dispatch, this.gitlabEditWrapper, this.gitlabEdit.value)
+							}}>Close</button>
 						</div>
 						<ol style={{ backgroundColor: '#333', padding: 20 }}>
 							{boards && boards.map((board, i) => (

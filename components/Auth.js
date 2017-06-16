@@ -1,7 +1,7 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { logUser, logOutUser, fetchRmIssues, setBoards, fetchGitlabIssues } from '../redux/actions'
+import { logUser, logOutUser } from '../redux/actions'
 import Users from '../modules/Users'
 
 class Auth extends Component {

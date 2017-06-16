@@ -4,7 +4,7 @@ import Link from 'next/link'
 import getSlug from 'speakingurl'
 import copy from 'copy-to-clipboard'
 
-import { GitLab, Redmine, Boards } from '../apiController'
+import { Boards } from '../apiController'
 import { ItemTypes, statuses, systems } from '../consts'
 import Users from '../modules/Users'
 import { updateGitlabIssue, updateRedmineIssue } from '../redux/actions'
@@ -20,8 +20,14 @@ class CommonTask extends Component {
 
 		const user = Users.getUserById(userId)
 
-		GitLab.closeIssue(dispatch, null, glId)
-		Redmine.closeIssue(dispatch, user.ids.rm, this.cmnWrapper, rmId)
+		dispatch(updateGitlabIssue(glId, {
+			state_event: 'close'
+		}))
+		dispatch(updateRedmineIssue(rmId, user.ids.rm, {
+			issue: {
+				status_id: statuses.closed.rm
+			}
+		}))
 	}
 	/**
 	 * Copies text and notify user by setting target's innerHTML
@@ -78,22 +84,34 @@ class CommonTask extends Component {
 			}
 		}
 
-		dispatch(updateGitlabIssue(commonTask.gitlab, assignee.ids.gl, labels.join(','), 'reopen', this.cmnComment.value))
-		dispatch(updateRedmineIssue(commonTask.redmine, user.ids.rm, assignee.ids.rm, rmStatusId, this.cmnComment.value))
+		dispatch(updateGitlabIssue(commonTask.gitlab.iid, {
+			assignee_id: assignee.ids.gl,
+			labels: labels.join(','),
+			state_event: 'reopen',
+		}, this.cmnComment.value))
+		dispatch(updateRedmineIssue(commonTask.redmine.id, user.ids.rm, {
+			issue: {
+				assigned_to_id: assignee.ids.rm,
+				status_id: rmStatusId,
+				notes: this.cmnComment.value,
+			}
+		}))
+
+		this.cmnWrapper.style.display = 'none'
 	}
 
 	render () {
-		const { boards, task, rmId, connectDragSource, userId } = this.props
+		const { boards, task, connectDragSource, userId } = this.props
 
 		return connectDragSource(
 			<li>
 				<a href="#" onClick={e => {
 					e.preventDefault()
 					this._editTask(task)
-				}}>{task.redmine.subject}</a> <small>({task.gitlab.iid} - {rmId})</small><br/>
+				}}>{task.redmine.subject}</a> <small>({task.gitlab.iid} - {task.redmine.id})</small><br/>
 				<img className="icon" title="Copy branch name" src="../static/images/git.png" onClick={e => this._copyElement(`feature/${task.gitlab.iid}-${task.redmine.id}-${getSlug(task.redmine.subject)}`, e.target)}/>
 				<img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png" onClick={e => this._copyElement(`${task.redmine.subject} - ${systems.redmine.url}issues/${task.redmine.id}`, e.target)}/>
-				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${rmId}`} target="_blank">
+				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${task.redmine.id}`} target="_blank">
 					<img src="../static/images/rm.png" alt="Redmine"/>
 				</a>
 				<a className="icon" title="Go to GitLab issue" href={`${systems.gitlab.issueUrl}${task.gitlab.iid}`} target="_blank">
@@ -108,7 +126,7 @@ class CommonTask extends Component {
 					window.open(url,'_blank')
 					//window.location.href = url
 				}}>merge to stage</button>
-				<Link as={`/task/${rmId}`} href={`/task?id=${rmId}`}><a style={{ marginRight: 10 }}>rm</a></Link>
+				<Link as={`/task/${task.redmine.id}`} href={`/task?id=${task.redmine.id}`}><a style={{ marginRight: 10 }}>rm</a></Link>
 
 				<div ref={elm => this.cmnWrapper = elm} style={{ display: 'none' }}>
 					<p style={{ float: `right` }}>
@@ -148,7 +166,10 @@ export default DragSource(ItemTypes.BOARD, {
 
 			labels.push(labelName)
 
-			dispatch(updateGitlabIssue(task.gitlab, task.gitlab.assignee.id, labels.join(',')))
+			dispatch(updateGitlabIssue(task.gitlab.iid, {
+				assignee_id: task.gitlab.assignee.id,
+				labels: labels.join(','),
+			}))
 
 			let glBoard = Boards.getBoardByTaskLabels(labels, boards)
 			let rmStatusId
@@ -159,7 +180,12 @@ export default DragSource(ItemTypes.BOARD, {
 				}
 			}
 
-			dispatch(updateRedmineIssue(task.redmine, task.redmine.assigned_to.id, task.redmine.assigned_to.id, rmStatusId))
+			dispatch(updateRedmineIssue(task.redmine.id, task.redmine.assigned_to.id, {
+				issue: {
+					assigned_to_id: task.redmine.assigned_to.id,
+					status_id: rmStatusId,
+				}
+			}))
 		}
 	},
 }, (connect, monitor) => ({

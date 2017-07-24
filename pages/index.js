@@ -7,7 +7,7 @@ import CommonTasks from '../components/CommonTasks'
 
 import Users from '../modules/Users'
 
-import { systems } from '../consts'
+import { systems, users } from '../consts'
 import { GitLab, Redmine } from '../apiController'
 import { nextConnect } from '../store'
 import { fetchRmIssues, fetchGitlabIssues, toggleMyTasksOnly, logUser, updateGitlabIssue, updateRedmineIssue, fetchRmIssue } from '../redux/actions'
@@ -89,7 +89,7 @@ class Index extends Component {
 					<h2 style={{ clear: 'both' }}>
 						User:&nbsp;
 						<select ref={select => this.select = select } onChange={() => dispatch(logUser('', '', this.select.value))} defaultValue={auth.user.id}>
-							{Users && Users.users.map((person) => (
+							{users && users.map((person) => (
 								<option key={person.id} value={person.id}>{person.name}</option>
 							))}
 						</select>
@@ -129,7 +129,7 @@ class Index extends Component {
 								))}
 							</select></p>
 							<p>Assign to: <select ref={elm => this.gitlabEditUser = elm}>
-								{Users.users.map(person => (
+								{users && users.map(person => (
 									<option key={person.ids.gl} value={person.ids.gl}>{person.name}</option>
 								))}
 							</select></p>

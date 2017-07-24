@@ -5,7 +5,7 @@ import getSlug from 'speakingurl'
 import copy from 'copy-to-clipboard'
 
 import { Boards } from '../apiController'
-import { ItemTypes, statuses, systems } from '../consts'
+import { ItemTypes, statuses, systems, users } from '../consts'
 import Users from '../modules/Users'
 import { updateGitlabIssue, updateRedmineIssue } from '../redux/actions'
 
@@ -139,7 +139,7 @@ class CommonTask extends Component {
 						))}
 					</select></p>
 					<p>Assign to: <select ref={elm => this.cmnAssignTo = elm} defaultValue={userId}>
-						{Users && Users.users.map(person => (
+						{users && users.map(person => (
 							<option key={person.id} value={person.id}>{person.name}</option>
 						))}
 					</select></p>

@@ -2,6 +2,8 @@ import fetch from 'isomorphic-fetch'
 //import Link from 'next/link'
 //import { renderToString } from 'react-dom/server'
 
+import Users from './modules/Users'
+
 import { systems, statuses } from './consts'
 import { fetchGitlabIssues, fetchRmIssues, addGitlabIssue, addIssue } from './redux/actions'
 
@@ -77,7 +79,7 @@ export const GitLab = {
 		}
 	),
 	createIssueFromRm: (dispatch, assigneeId, boards, issue) => {
-		let labels = [assigneeId == 4 ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, statuses, boards)].join(',')
+		let labels = [Users.getUserByName('Ondra').ids.gl === assigneeId ? 'Frontend' : 'Backend', GitLab.getLabelByRmStatusId(issue.status.id, statuses, boards)].join(',')
 
 		return REST.gl(`projects/${systems.gitlab.projectId}/issues`, issue => {
 			if (issue) {
@@ -129,6 +131,7 @@ export const GitLab = {
 		}
 	},
 	getLabelByRmStatusId: (rmStatusId, statuses, boards) => {
+		console.log(rmStatusId, statuses, boards);
 		let gitlabBoardId = 0
 		for (let key in statuses) {
 			if (statuses.hasOwnProperty(key) && rmStatusId == statuses[key].rm) {

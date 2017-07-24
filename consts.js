@@ -1,10 +1,75 @@
+export const users = [
+	{
+		name: 'Lukas',
+		id: 1,
+		ids: {
+			gl: 1,
+			rm: 187,
+			td: 717767,
+		},
+	},
+	{
+		name: 'Radek',
+		id: 2,
+		ids: {
+			gl: 8,
+			rm: 168,
+			td: 659514,
+		},
+	},
+	{
+		name: 'Milos',
+		id: 3,
+		ids: {
+			gl: 5,
+			rm: 55,
+			td: 423183,
+		},
+	},
+	{
+		name: 'Ondra',
+		id: 4,
+		ids: {
+			gl: 3,
+			rm: 129,
+			td: 523967,
+		},
+	},
+	{
+		name: 'Dan',
+		id: 5,
+		ids: {
+			gl: 2,
+			rm: 134,
+			td: 527259,
+		},
+	},
+	{
+		name: 'Tomas',
+		id: 6,
+		ids: {
+			gl: 4,
+			rm: 149,
+			td: undefined,
+		},
+	},
+	{
+		name: 'Peter T',
+		id: 7,
+		ids: {
+			gl: 6,
+			rm: 193,
+			td: undefined,
+		},
+	},
+]
 export const statuses = {
 	todo: {
-		gl: 2,	// To Do
+		gl: 3,	// To Do
 		rm: 4,	// Čeká se
 	},
 	progress: {
-		gl: 3,	// Progress
+		gl: 4,	// Progress
 		rm: 2,	// Ve vývoji
 	},
 	test: {
@@ -12,7 +77,7 @@ export const statuses = {
 		rm: 2,	// Ve vývoji
 	},
 	deploy: {
-		gl: 4,	// Deploy
+		gl: 6,	// Deploy
 		rm: 3,	// Vyřešený
 	},
 	idle: {
@@ -38,12 +103,12 @@ export const systems = {
 		url: 'http://rm.udiv.eu/',
 	},
 	gitlab: {
-		apiUrl: 'http://gitlab.dev.footshop.cz/api/v4/',
-		auth: 'JYU71ybJZx1HzRjG4eGC',
-		issueUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/issues/',
-		projectId: 3,	// footshop-ng
-		projectUrl: 'http://gitlab.dev.footshop.cz/footshop/footshop-ng/',
-		url: 'http://gitlab.dev.footshop.cz/',
+		apiUrl: 'http://footshop-git.s64.cz/api/v4/',
+		auth: '-HRjUUtjim76Pk2xJnT4',
+		issueUrl: 'http://footshop-git.s64.cz/footshop/footshop-ng/issues/',
+		projectId: 2,	// footshop-ng
+		projectUrl: 'http://footshop-git.s64.cz/footshop/footshop-ng/',
+		url: 'http://footshop-git.s64.cz/',
 	},
 	timedoctor: {
 		// auth: 'M2I1NTU2MWIyZTkzNGViZGJkMDM3YzBlZmZkYjQxY2MxNTA5ZTlkNWQ5ZjIzMWMxMGEyYjljODk4YmE4OGEwMA', //milosh

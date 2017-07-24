@@ -6,7 +6,7 @@ import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
 
-import { systems, statuses } from '../consts'
+import { systems, statuses, users } from '../consts'
 import { addIssue, addGitlabIssue } from '../redux/actions'
 
 class CommonTasks extends Component {
@@ -84,7 +84,7 @@ class CommonTasks extends Component {
 					<textarea ref={elm => this.newDescription = elm} placeholder={`Issue description`} ></textarea>
 					<br/>
 					<p>Assign to: <select ref={elm => this.newAssignee = elm} defaultValue={auth.user.id}>
-						{Users && Users.users.map((person) => (
+						{users && users.map((person) => (
 							<option key={person.id} value={person.id}>{person.name}</option>
 						))}
 					</select></p>

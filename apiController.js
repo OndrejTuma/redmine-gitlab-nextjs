@@ -26,6 +26,13 @@ export const REST = {
 }
 
 export const Boards = {
+	getBoardByRmId: (rmId, boards) => {
+		for (let i in boards) {
+			if (boards[i].id === boardId) {
+				return boards[i]
+			}
+		}
+	},
 	getBoardById: (boardId, boards) => {
 		for (let i in boards) {
 			if (boards[i].id === boardId) {

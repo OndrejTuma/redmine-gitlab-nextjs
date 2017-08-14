@@ -62,11 +62,20 @@ export const users = [
 			td: undefined,
 		},
 	},
+	{
+		name: 'Marek',
+		id: 8,
+		ids: {
+			gl: undefined,
+			rm: 219,
+			td: undefined,
+		},
+	},
 ]
 export const statuses = {
 	todo: {
 		gl: 3,	// To Do
-		rm: 4,	// Čeká se
+		rm: 1,	// Nový
 	},
 	progress: {
 		gl: 4,	// Progress
@@ -74,7 +83,7 @@ export const statuses = {
 	},
 	test: {
 		gl: 5,	// Test
-		rm: 2,	// Ve vývoji
+		rm: 8,	// Testování
 	},
 	deploy: {
 		gl: 6,	// Deploy

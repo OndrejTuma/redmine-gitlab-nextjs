@@ -7,33 +7,9 @@ import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
 
 import { systems, statuses, users } from '../consts'
-import { addIssue, addGitlabIssue } from '../redux/actions'
+import { addIssue } from '../redux/actions'
 
 class CommonTasks extends Component {
-	/**
-	 * iterates through Redmine issues and then filters GitLab issues, who has Redmine ID in its name
-	 * @returns {*}
-	 * @private
-	 */
-	_findCommonTasks () {
-		const { issues, gitlabIssues } = this.props
-		let issueIds = issues.map((issue) => {
-			return issue.id
-		})
-
-		return gitlabIssues.reduce((result, issue) => {
-			let rmId = Redmine.findId(issue.title)
-
-			if (issueIds.indexOf(rmId) > -1) {
-				result.push({
-					redmine: Redmine.getIssue(issues, rmId),
-					gitlab: issue,
-				})
-			}
-
-			return result
-		}, [])
-	}
 	/**
 	 * adds issue in Redmine and GitLab, fill name, description (and labels for GitLab) and assign it to current user
 	 */
@@ -43,45 +19,33 @@ class CommonTasks extends Component {
 
 		REST.rm(`issues.json`, data => {
 			dispatch(addIssue(data.issue))
-			REST.gl(`projects/${systems.gitlab.projectId}/issues`, data => {
-				this.newWrapper.style.display= 'none'
-				this.newDescription.value = ''
-				this.newTitle.value = ''
-				dispatch(addGitlabIssue(data))
-			}, 'POST', {
-				labels: 'To Do,' + (assignee.ids.gl === 4 ? 'Frontend' : 'Backend'),
-				assignee_id: assignee.ids.gl,
-				title: `${data.issue.id} - ${this.newTitle.value}`,
-				description: this.newDescription.value,
-			})
+			this.formWrapper.style.display = 'none'
 		}, 'POST', {
 			issue: {
 				project_id: systems.redmine.projectId,
-				status_id: statuses.idle.rm,
-				subject: this.newTitle.value,
-				description: this.newDescription.value,
+				status_id: statuses.todo.rm,
+				subject: this.formTitle.value,
+				description: this.formDescription.value,
 				assigned_to_id: assignee.ids.rm,
 			}
 		})
 	}
 
 	render () {
-		const { auth, boards, dispatch } = this.props
-
-		let commonTasks = this._findCommonTasks()
+		const { auth, boards, dispatch, issues } = this.props
 
 		return (
 			<CommonBoards>
-				<h2>Common tasks:</h2>
+				<h2>Your tasks:</h2>
 				<button onClick={() => {
-					this.newWrapper.style.display = 'block'
+					this.formWrapper.style.display = 'block'
 					this.newAssignee.value = auth.user.id
 				}}>New task</button>
-				<div ref={elm => this.newWrapper = elm} style={{ display: 'none', clear: 'both' }}>
-					<button style={{ float: 'right' }} onClick={() => this.newWrapper.style.display = 'none'}>x</button>
-					<input type="text" ref={elm => this.newTitle = elm} placeholder={`Issue title`} />
+				<div ref={elm => this.formWrapper = elm} style={{ display: 'none', clear: 'both' }}>
+					<button style={{ float: 'right' }} onClick={() => this.formWrapper.style.display = 'none'}>x</button>
+					<input type="text" ref={elm => this.formTitle = elm} placeholder={`Issue title`} />
 					<br/>
-					<textarea ref={elm => this.newDescription = elm} placeholder={`Issue description`} ></textarea>
+					<textarea ref={elm => this.formDescription = elm} placeholder={`Issue description`} ></textarea>
 					<br/>
 					<p>Assign to: <select ref={elm => this.newAssignee = elm} defaultValue={auth.user.id}>
 						{users && users.map((person) => (
@@ -111,8 +75,8 @@ class CommonTasks extends Component {
 					}
 				`}</style>
 				<ul className="task-list">
-					{boards && commonTasks && boards.map(board => (
-						<CommonBoard key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={commonTasks} />
+					{boards && boards.map(board => (
+						<CommonBoard key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={issues} />
 					))}
 				</ul>
 			</CommonBoards>

@@ -108,6 +108,15 @@ const redmineReducer = (state = {
 				return result
 			}, []),
 		}
+		case 'UPDATE_REDMINE_ISSUE': return {
+			...state,
+			issues: state.issues.map(issue => {
+				return (issue.id === action.payload.id) ? {
+					...issue,
+					...action.payload,
+				} : issue
+			}),
+		}
 		default: return state
 	}
 }

@@ -1,4 +1,5 @@
 import CommonTask from './CommonTask'
+import Statuses from '../modules/Statuses'
 import { DropTarget } from 'react-dnd'
 import { ItemTypes } from '../consts'
 
@@ -7,8 +8,9 @@ const CommonBoard = (({ userId, board, boards, dispatch, tasks, name, connectDro
 		<strong className="heading" style={{ backgroundColor: board.label.color }}>{name}</strong>
 		<ol className="board">
 			{tasks.map((task, i) => {
-				if (task.gitlab.labels.indexOf(name) > -1) {
-					return <CommonTask dispatch={dispatch} userId={userId} key={i} task={task} boards={boards} />
+				let status = Statuses.getStatusByRmId(task.status.id)
+				if (status.gl && status.gl === board.id) {
+					return <CommonTask dispatch={dispatch} board={board} userId={userId} key={i} task={task} boards={boards} />
 				}
 			})}
 		</ol>

@@ -16,9 +16,7 @@ class CommonTask extends Component {
 	 * @private
 	 */
 	_closeTask (task) {
-		const { dispatch, userId } = this.props
-
-		const user = Users.getUserById(userId)
+		const { dispatch } = this.props
 
 		dispatch(updateRedmineIssue(task, {
 			issue: {
@@ -128,7 +126,7 @@ class CommonTask extends Component {
 }
 
 export default DragSource(ItemTypes.BOARD, {
-	beginDrag(props) {
+	beginDrag() {
 		//console.log('beginDrag',props);
 		return {};
 	},

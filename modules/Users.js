@@ -11,16 +11,6 @@ const Users = {
 		}
 		return {}
 	},
-	getUserByGlId: function(glUserId) {
-		glUserId = parseInt(glUserId)
-
-		for (let i in users) {
-			if (users.hasOwnProperty(i) && users[i].ids.rm === glUserId) {
-				return users[i]
-			}
-		}
-		return {}
-	},
 	getUserByRmId: function(rmUserId) {
 		rmUserId = parseInt(rmUserId)
 

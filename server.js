@@ -10,7 +10,7 @@ app.prepare()
 	.then(() => {
 		const server = express()
 
-		server.use(cors())
+		//server.use(cors())
 
 		server.get('/task/:id', (req, res) => {
 			const actualPage = '/task'

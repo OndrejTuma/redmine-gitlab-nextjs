@@ -5,6 +5,7 @@ import { REST } from '../apiController'
 import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
+import Trash from './Trash'
 
 import { systems, statuses, users } from '../consts'
 import { addIssue } from '../redux/actions'
@@ -79,6 +80,8 @@ class CommonTasks extends Component {
 						<CommonBoard key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={issues} />
 					))}
 				</ul>
+
+				<Trash dispatch={dispatch} isTrash={true} />
 			</CommonBoards>
 		)
 	}

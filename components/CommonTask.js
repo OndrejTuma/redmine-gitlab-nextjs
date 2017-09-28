@@ -12,19 +12,6 @@ import { updateRedmineIssue } from '../redux/actions'
 
 class CommonTask extends Component {
 	/**
-	 * Closes task
-	 * @private
-	 */
-	_closeTask (task) {
-		const { dispatch } = this.props
-
-		dispatch(updateRedmineIssue(task, {
-			issue: {
-				status_id: statuses.closed.rm
-			}
-		}))
-	}
-	/**
 	 * Copies text and notify user by setting target's innerHTML
 	 * @param text string - text to copy to clipboard
 	 * @param elm domNode
@@ -61,8 +48,6 @@ class CommonTask extends Component {
 		const { dispatch } = this.props
 		const assignee = Users.getUserById(this.formAssignedTo.value)
 		const status = Statuses.getStatusByGlId(this.formState.value)
-
-		console.log('new status id',);
 
 		dispatch(updateRedmineIssue(task, {
 			issue: {
@@ -118,7 +103,6 @@ class CommonTask extends Component {
 					<textarea ref={elm => this.formComment = elm}></textarea>
 					<br/>
 					<button onClick={() => this._updateTask(task)}>Update task</button>
-					<button onClick={() => this._closeTask(task)}>Close task</button>
 				</div>
 			</li>
 		)
@@ -133,11 +117,22 @@ export default DragSource(ItemTypes.BOARD, {
 	endDrag(props, monitor) {
 		if (monitor.didDrop()) {
 			const { dispatch, task } = props
+			const result = monitor.getDropResult()
+			let status_id
+
+			if (result.board) {
+				status_id = Statuses.getStatusByGlId(result.board.id).rm
+			}
+			else if (result.isTrash) {
+				status_id = statuses.closed.rm
+			}
+			else {
+				status_id = task.status.id
+			}
 
 			dispatch(updateRedmineIssue(task, {
 				issue: {
-					assigned_to_id: task.assigned_to.id,
-					status_id: Statuses.getStatusByGlId(monitor.getDropResult().board.id).rm,
+					status_id,
 				}
 			}))
 		}

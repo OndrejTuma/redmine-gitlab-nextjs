@@ -71,6 +71,15 @@ export const users = [
 			td: undefined,
 		},
 	},
+	{
+		name: 'Ann',
+		id: 9,
+		ids: {
+			gl: undefined,
+			rm: 226,
+			td: undefined,
+		},
+	},
 ]
 export const statuses = {
 	todo: {
@@ -100,7 +109,9 @@ export const statuses = {
 export const systems = {
 	redmine: {
 		allowedIssueStatuses: [
+			statuses.todo.rm,
 			statuses.progress.rm,
+			statuses.test.rm,
 			statuses.deploy.rm,
 			statuses.idle.rm,
 			statuses.closed.rm,

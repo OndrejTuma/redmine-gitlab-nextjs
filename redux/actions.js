@@ -92,6 +92,9 @@ export const updateRedmineIssue = (issue, data, callback) => dispatch => {
 			dispatch({
 				type: 'UPDATE_REDMINE_ISSUE', payload: {
 					...issue,
+					assigned_to: {
+						id: assigned_to_id
+					},
 					status: {
 						id: status_id
 					}

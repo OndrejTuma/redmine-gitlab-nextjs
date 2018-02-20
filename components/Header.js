@@ -4,7 +4,7 @@ import Auth from './Auth'
 const Header = (props) => (
 	<div style={{ backgroundColor: '#eee', padding: '10px 20px', marginBottom: 20, textAlign: 'center' }}>
 		{props.children}
-		<Link href='/' style={{ float: 'left' }}><a>Home</a></Link>
+		<Link href='/'><a style={{ float: 'left' }}>Home</a></Link>
 		<p style={{ float: 'right' }}><Auth /></p>
 		<p>Redmine & GitLab API playground on Next.js!</p>
 	</div>

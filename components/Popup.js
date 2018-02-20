@@ -1,6 +1,9 @@
 export default (props) => {
 	return (
-		<div className="popup">
+		<div className="popup" style={{
+			background: '#fff',
+			padding: 30,
+		}}>
 			{props.children}
 		</div>
 	)

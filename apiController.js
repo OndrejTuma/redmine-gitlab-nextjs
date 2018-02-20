@@ -21,13 +21,14 @@ export const REST = {
 }
 
 export const restFetch = (url, callback, method = `GET`, data) => {
-	if (method === 'GET') {
+	if (method === 'GET' && data) {
 		url += /\?/.test(url) ? '&' : '?'
 		for (let [key, value] of Object.entries(data)) {
 			url += `${key}=${value}&`
 		}
 	}
-	return fetch(url, {
+
+	var apiFetch = fetch(url, {
 		mode: 'cors',
 		method: method,
 		headers: {
@@ -38,23 +39,57 @@ export const restFetch = (url, callback, method = `GET`, data) => {
 	})
 		.then(
 			response => {
-				//console.log('REST fetch response', response, response.json());
 				if (!response.ok) {
 					alert(`Fetch on url ( ${response.url} ) failed: ${response.status} - ${response.statusText}`)
 				}
 				else {
 					return response.text().then(text => (text ? JSON.parse(text) : {}))
-					// return response.json()
 				}
-				/*
-				 if (['GET', 'POST'].indexOf(method) > -1) {
-				 return response.json()
-				 }
-				 */
 			},
 			error => console.error('Error occured while fetching:', error)
 		)
-		.then(response => {
-			callback(response)
-		})
+		.then(response => callback(response));
+
+	return apiFetch;
+}
+
+
+export const gitlabFetch = (resource_url, method, data = {}) => {
+	return apiFetch(`${systems.gitlab.apiProjectUrl}${resource_url}`, method, Object.assign({}, data, {
+		private_token: systems.gitlab.auth,
+	}))
+}
+export const redmineFetch = (resource_url, method, data = {}) => {
+	return apiFetch(`${systems.redmine.url}${resource_url}`, method, Object.assign({}, data, {
+		key: systems.redmine.auth,
+		project_id: systems.redmine.projectId,
+	}))
+}
+export const apiFetch = (url, method = `GET`, data) => {
+	if (method === 'GET' && data) {
+		url += /\?/.test(url) ? '&' : '?'
+		for (let [key, value] of Object.entries(data)) {
+			url += `${key}=${value}&`
+		}
+	}
+
+	var apiFetch = fetch(url, {
+		mode: 'cors',
+		method,
+		headers: {
+			'Access-Control-Allow-Origin': '*',
+			'Content-Type': 'application/json',
+		},
+		body: method === 'GET' ? null : JSON.stringify(data)
+	})
+		.then(
+			response => {
+				if (!response.ok) {
+					return response
+				}
+				return response.text().then(text => (text ? JSON.parse(text) : {}))
+			}
+		)
+
+	return apiFetch;
 }

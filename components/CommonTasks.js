@@ -90,6 +90,5 @@ class CommonTasks extends Component {
 export default connect(state => ({
 	auth: state.auth,
 	boards: state.gitlab.boards,
-	gitlabIssues: state.gitlab.issues,
 	issues: state.redmine.issues,
 }))(CommonTasks)

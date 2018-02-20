@@ -23,13 +23,28 @@ const authReducer = (state = {
 	}
 }
 const gitlabReducer = (state = {
-	boards: [],
+	boards: [
+		{id: 3, label: {color: "#F0AD4E", description: null, id: 2, name: "To Do"}, position: 0},
+		{id: 4, label: {color: "#5CB85C", description: null, id: 3, name: "Progress"}, position: 1},
+		{id: 5, label: {color: "#D9534F", description: null, id: 4, name: "Test"}, position: 2},
+		{id: 8, label: {color: "#d14ace", description: null, id: 7, name: "Připraveno na deploy"}, position: 5},
+		{id: 6, label: {color: "#428BCA", description: null, id: 5, name: "Deploy"}, position: 3},
+		{id: 7, label: {color: "#D1D100", description: null, id: 6, name: "Čeká se"}, position: 4},
+	],
 	issues: [],
+	mr_mine: [],
+	mr_for_me: [],
 	myTasksOnly: true,
 }, action) => {
 	switch (action.type) {
 		case 'MY_TASKS_TOGGLE': return Object.assign({}, state, {
 			myTasksOnly: !state.myTasksOnly,
+		})
+		case 'SET_MY_MR': return Object.assign({}, state, {
+			mr_mine: action.payload,
+		})
+		case 'SET_MR_FOR_ME': return Object.assign({}, state, {
+			mr_for_me: action.payload,
 		})
 		case 'SET_BOARDS': return Object.assign({}, state, {
 			boards: action.payload,

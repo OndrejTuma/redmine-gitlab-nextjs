@@ -1,23 +1,55 @@
-import { Component } from 'react'
-import { DragSource } from 'react-dnd'
+import {Component} from 'react'
+import {DragSource} from 'react-dnd'
 import Link from 'next/link'
 import getSlug from 'speakingurl'
 import copy from 'copy-to-clipboard'
+import { connect } from 'react-redux'
 
-import { Boards } from '../apiController'
-import { ItemTypes, statuses, systems, users } from '../consts'
+import {apiFetch, gitlabFetch, redmineFetch, Boards} from '../apiController'
+import {ItemTypes, statuses, systems, users, GIT} from '../consts'
 import Users from '../modules/Users'
 import Statuses from '../modules/Statuses'
-import { updateRedmineIssue } from '../redux/actions'
+import {updateRedmineIssue} from '../redux/actions'
+
 
 class CommonTask extends Component {
+	state = {
+		merge_request_id: 0
+	}
+
+	componentDidMount() {
+		const {mr_mine} = this.props
+		const branch_name = this._assembleBranchName()
+
+		if (!mr_mine || !mr_mine.length) {
+			return
+		}
+
+		mr_mine.map(mr => {
+			if (branch_name == mr.source_branch && mr.target_branch == GIT.main_branch) {
+				this.setState({merge_request_id: mr.iid})
+			}
+		})
+	}
+
+	_assembleBranchName() {
+		const {task: {id, subject}} = this.props
+
+		return `feature/${id}-${getSlug(subject)}`
+	}
+	_assembleTitle() {
+		const {task: {id, subject}} = this.props
+
+		return `#${id}: ${subject}`
+	}
+
 	/**
 	 * Copies text and notify user by setting target's innerHTML
 	 * @param text string - text to copy to clipboard
 	 * @param elm domNode
 	 * @private
 	 */
-	_copyElement (text, elm) {
+	_copyElement(text, elm) {
 		copy(text)
 
 		if (elm) {
@@ -28,24 +60,26 @@ class CommonTask extends Component {
 			}, 1000)
 		}
 	}
+
 	/**
 	 * Show edit form with proper values
 	 * @private
 	 */
 	_editTask() {
-		let { board: { id: boardId }, userId } = this.props
+		let {board: {id: boardId}, userId} = this.props
 
 		this.formWrapper.style.display = 'block'
 		this.formState.value = boardId
 		this.formAssignedTo.value = userId
 	}
+
 	/**
 	 * updates Redmine task
 	 * @param task
 	 * @private
 	 */
-	_updateTask (task) {
-		const { dispatch } = this.props
+	_updateTask(task) {
+		const {dispatch} = this.props
 		const assignee = Users.getUserById(this.formAssignedTo.value)
 		const status = Statuses.getStatusByGlId(this.formState.value)
 
@@ -60,34 +94,55 @@ class CommonTask extends Component {
 		this.formWrapper.style.display = 'none'
 	}
 
-	render () {
-		const { boards, task, connectDragSource, userId } = this.props
+	render() {
+		const {boards, task, connectDragSource, userId} = this.props
+		const {merge_request_id} = this.state
 
 		return connectDragSource(
 			<li>
 				<a href="#" onClick={e => {
 					e.preventDefault()
 					this._editTask(task)
-				}}>{task.subject}</a> <small>({task.id})</small><br/>
-				<img className="icon" title="Copy branch name" src="../static/images/git.png" onClick={e => this._copyElement(`feature/${task.id}-${getSlug(task.subject)}`, e.target)}/>
-				<img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png" onClick={e => this._copyElement(`${task.subject} - ${systems.redmine.url}issues/${task.id}`, e.target)}/>
-				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${task.id}`} target="_blank">
+				}}>{task.subject}</a>
+				<small>({task.id})</small>
+				<br/>
+				<img className="icon" title="Copy branch name" src="../static/images/git.png"
+					 onClick={e => this._copyElement(`feature/${task.id}-${getSlug(task.subject)}`, e.target)}/>
+				<img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png"
+					 onClick={e => this._copyElement(`${task.subject} - ${systems.redmine.url}issues/${task.id}`, e.target)}/>
+				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${task.id}`}
+				   target="_blank">
 					<img src="../static/images/rm.png" alt="Redmine"/>
 				</a>
 				<br/>
-				<button style={{ marginRight: 10 }} onClick={() => {
-					if (!confirm('Máš mergnuto z produce?')) {
+				<button style={{marginRight: 10}} onClick={() => {
+					if (merge_request_id) {
+						return window.open(`${systems.gitlab.mergeRequestUrl}${merge_request_id}`)
+					}
+
+					if (!confirm(`Máš rebased ${GIT.main_branch}?`)) {
 						return
 					}
 
-					let url = `${systems.gitlab.projectUrl}merge_requests/new?merge_request[source_project_id]=${systems.gitlab.projectId}&merge_request[source_branch]=feature/${task.id}-${getSlug(task.subject)}&merge_request[target_project_id]=${systems.gitlab.projectId}&merge_request[target_branch]=staging`
-					window.open(url,'_blank')
+					gitlabFetch('merge_requests', 'POST', {
+						id: systems.gitlab.projectId,
+						source_branch: this._assembleBranchName(),
+						target_branch: GIT.main_branch,
+						title: this._assembleTitle(),
+						remove_source_branch: true,
+						labels: `Frontend`
+					})
+						.then(data => {
+							if (!data || !data.iid) {
+								return
+							}
+							this.setState({merge_request_id: data.iid})
+						})
+				}}>{merge_request_id ? 'view merge request' : 'merge to stage'}</button>
+				<Link as={`/task/${task.id}`} href={`/task?id=${task.id}`}><a style={{marginRight: 10}}>rm</a></Link>
 
-				}}>merge to stage</button>
-				<Link as={`/task/${task.id}`} href={`/task?id=${task.id}`}><a style={{ marginRight: 10 }}>rm</a></Link>
-
-				<div ref={elm => this.formWrapper = elm} style={{ display: 'none' }}>
-					<p style={{ float: `right` }}>
+				<div ref={elm => this.formWrapper = elm} style={{display: 'none'}}>
+					<p style={{float: `right`}}>
 						<button onClick={() => this.formWrapper.style.display = 'none'}>x</button>
 					</p>
 					<p>Set state: <select ref={elm => this.formState = elm}>
@@ -109,16 +164,21 @@ class CommonTask extends Component {
 	}
 }
 
-export default DragSource(ItemTypes.BOARD, {
+export default connect(state => ({
+	mr_mine: state.gitlab.mr_mine,
+}))(DragSource(ItemTypes.BOARD, {
 	beginDrag() {
 		//console.log('beginDrag',props);
 		return {};
 	},
 	endDrag(props, monitor) {
 		if (monitor.didDrop()) {
-			const { dispatch, task } = props
+			const {dispatch, task} = props
 			const result = monitor.getDropResult()
 			let status_id
+			let data = {
+				issue: {}
+			}
 
 			if (result.board) {
 				status_id = Statuses.getStatusByGlId(result.board.id).rm
@@ -130,14 +190,21 @@ export default DragSource(ItemTypes.BOARD, {
 				status_id = task.status.id
 			}
 
-			dispatch(updateRedmineIssue(task, {
-				issue: {
-					status_id,
-				}
-			}))
+			data.issue.status_id = status_id
+
+			if ([statuses.test.rm].indexOf(status_id) >= 0) {
+				data.issue.done_ratio = 80
+			}
+			if ([statuses.deploy.rm, statuses.ready.rm].indexOf(status_id) >= 0) {
+				data.issue.done_ratio = 100
+			}
+
+			console.log(result, status_id);
+
+			dispatch(updateRedmineIssue(task, data))
 		}
 	},
 }, (connect, monitor) => ({
 	connectDragSource: connect.dragSource(),
 	isDragging: monitor.isDragging()
-}))(CommonTask)
+}))(CommonTask))

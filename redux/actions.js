@@ -1,5 +1,5 @@
 import { systems, statuses } from '../consts'
-import { REST, restFetch } from '../apiController'
+import { REST, restFetch, gitlabFetch } from '../apiController'
 import Users from '../modules/Users'
 
 /* ============================= AUTH REDUCER ACTIONS ============================= */
@@ -11,7 +11,7 @@ export const logUser = (name, password, userId = "4") => dispatch => restFetch(`
 		const user = Users.getUserById(data.user.id)
 
 		dispatch(fetchRmIssues(user.ids.rm))
-		dispatch(setBoards())
+		//dispatch(setBoards())
 	}
 	// !!! remove this dummy data
 	else {
@@ -26,7 +26,10 @@ export const logUser = (name, password, userId = "4") => dispatch => restFetch(`
 		const user = Users.getUserById(parseInt(userId))
 
 		dispatch(fetchRmIssues(user.ids.rm))
-		dispatch(setBoards())
+		dispatch(setStatuses())
+		dispatch(setMergeRequests(user.ids.gl))
+		dispatch(setMergeRequestAssignedToMe())
+		//dispatch(setBoards())
 	}
 }, 'PUT', {
 	name,
@@ -35,6 +38,22 @@ export const logUser = (name, password, userId = "4") => dispatch => restFetch(`
 export const logOutUser = () => dispatch => dispatch({ type: 'LOG_OUT' })
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
+export const setMergeRequests = author_id => dispatch => gitlabFetch('merge_requests', 'GET', {
+	state: 'opened',
+	author_id,
+}).then(data => {
+	if (data && data.length) {
+		dispatch({ type: 'SET_MY_MR', payload: data })
+	}
+})
+export const setMergeRequestAssignedToMe = () => dispatch => gitlabFetch('merge_requests', 'GET', {
+	state: 'opened',
+	scope: 'assigned-to-me',
+}).then(data => {
+	if (data && data.length) {
+		dispatch({ type: 'SET_MR_FOR_ME', payload: data })
+	}
+})
 export const setBoards = () => dispatch => REST.gl(
 	`projects/${systems.gitlab.projectId}/boards`,
 	data => {
@@ -42,6 +61,15 @@ export const setBoards = () => dispatch => REST.gl(
 			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
 		}
 	},
+)
+export const createMR = data => dispatch => REST.gl(
+	`projects/${systems.gitlab.projectId}/merge_requests`,
+	result => {
+		console.log('createMR callback', result);
+		return result
+	},
+	'POST',
+	data
 )
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */

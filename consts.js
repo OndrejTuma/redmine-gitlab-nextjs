@@ -1,11 +1,10 @@
 export const users = [
 	{
-		name: 'Lukas',
+		name: 'Andrej',
 		id: 1,
 		ids: {
-			gl: 1,
-			rm: 187,
-			td: 717767,
+			gl: 13,
+			rm: 241,
 		},
 	},
 	{
@@ -18,12 +17,11 @@ export const users = [
 		},
 	},
 	{
-		name: 'Milos',
+		name: 'Jany',
 		id: 3,
 		ids: {
-			gl: 5,
-			rm: 55,
-			td: 423183,
+			gl: 14,
+			rm: 5,
 		},
 	},
 	{
@@ -39,9 +37,8 @@ export const users = [
 		name: 'Dan',
 		id: 5,
 		ids: {
-			gl: 2,
-			rm: 134,
-			td: 527259,
+			gl: 17,
+			rm: 217,
 		},
 	},
 	{
@@ -50,7 +47,6 @@ export const users = [
 		ids: {
 			gl: 4,
 			rm: 149,
-			td: undefined,
 		},
 	},
 	{
@@ -59,25 +55,22 @@ export const users = [
 		ids: {
 			gl: 6,
 			rm: 193,
-			td: undefined,
 		},
 	},
 	{
 		name: 'Marek',
 		id: 8,
 		ids: {
-			gl: undefined,
+			gl: 9,
 			rm: 219,
-			td: undefined,
 		},
 	},
 	{
 		name: 'Ann',
 		id: 9,
 		ids: {
-			gl: undefined,
+			gl: 10,
 			rm: 226,
-			td: undefined,
 		},
 	},
 ]
@@ -93,6 +86,10 @@ export const statuses = {
 	test: {
 		gl: 5,	// Test
 		rm: 8,	// Testování
+	},
+	ready: {
+		gl: 8,	// Ready to deploy
+		rm: 9,	// Připraveno k nasazení
 	},
 	deploy: {
 		gl: 6,	// Deploy
@@ -112,6 +109,7 @@ export const systems = {
 			statuses.todo.rm,
 			statuses.progress.rm,
 			statuses.test.rm,
+			statuses.ready.rm,
 			statuses.deploy.rm,
 			statuses.idle.rm,
 			statuses.closed.rm,
@@ -123,12 +121,14 @@ export const systems = {
 		url: 'http://rm.udiv.eu/',
 	},
 	gitlab: {
-		apiUrl: 'http://footshop-git.s64.cz/api/v4/',
+		apiUrl: 'https://git.footshop.cz/api/v4/',
+		apiProjectUrl: 'https://git.footshop.cz/api/v4/projects/2/',
 		auth: '-HRjUUtjim76Pk2xJnT4',
-		issueUrl: 'http://footshop-git.s64.cz/footshop/footshop-ng/issues/',
+		issueUrl: 'https://git.footshop.cz/footshop/footshop-ng/issues/',
 		projectId: 2,	// footshop-ng
-		projectUrl: 'http://footshop-git.s64.cz/footshop/footshop-ng/',
-		url: 'http://footshop-git.s64.cz/',
+		projectUrl: 'https://git.footshop.cz/footshop/footshop-ng/',
+		mergeRequestUrl: 'https://git.footshop.cz/footshop/footshop-ng/merge_requests/',
+		url: 'https://git.footshop.cz/',
 	},
 	timedoctor: {
 		// auth: 'M2I1NTU2MWIyZTkzNGViZGJkMDM3YzBlZmZkYjQxY2MxNTA5ZTlkNWQ5ZjIzMWMxMGEyYjljODk4YmE4OGEwMA', //milosh
@@ -142,4 +142,7 @@ export const systems = {
 }
 export const ItemTypes = {
 	BOARD: 'board'
+}
+export const GIT = {
+	main_branch: 'staging'
 }

@@ -42,7 +42,7 @@ export const setMergeRequests = author_id => dispatch => gitlabFetch('merge_requ
 	state: 'opened',
 	author_id,
 }).then(data => {
-	if (data && data.length) {
+	if (data) {
 		dispatch({ type: 'SET_MY_MR', payload: data })
 	}
 })
@@ -50,7 +50,7 @@ export const setMergeRequestAssignedToMe = () => dispatch => gitlabFetch('merge_
 	state: 'opened',
 	scope: 'assigned-to-me',
 }).then(data => {
-	if (data && data.length) {
+	if (data) {
 		dispatch({ type: 'SET_MR_FOR_ME', payload: data })
 	}
 })

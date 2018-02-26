@@ -3,14 +3,14 @@ import Statuses from '../modules/Statuses'
 import { DropTarget } from 'react-dnd'
 import { ItemTypes } from '../consts'
 
-const CommonBoard = (({ userId, board, boards, dispatch, tasks, name, connectDropTarget }) => connectDropTarget(
+const CommonBoard = (({ userId, board, tasks, connectDropTarget }) => connectDropTarget(
 	<li>
-		<strong className="heading" style={{ backgroundColor: board.label.color }}>{name}</strong>
+		<strong className="heading" style={{ backgroundColor: board.label.color }}>{board.label.name}</strong>
 		<ol className="board">
 			{tasks.map((task, i) => {
 				let status = Statuses.getStatusByRmId(task.status.id)
 				if (status.gl && status.gl === board.id) {
-					return <CommonTask dispatch={dispatch} board={board} userId={userId} key={i} task={task} boards={boards} />
+					return <CommonTask board={board} userId={userId} key={i} task={task} />
 				}
 			})}
 		</ol>

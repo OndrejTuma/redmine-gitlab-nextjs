@@ -1,7 +1,7 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { REST } from '../apiController'
+import { redmineFetch } from '../apiController'
 import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
@@ -18,22 +18,24 @@ class CommonTasks extends Component {
 		const { dispatch, auth } = this.props
 		const assignee = Users.getUserById(auth.user.id)
 
-		REST.rm(`issues.json`, data => {
-			dispatch(addIssue(data.issue))
-			this.formWrapper.style.display = 'none'
-		}, 'POST', {
-			issue: {
-				project_id: systems.redmine.projectId,
-				status_id: statuses.todo.rm,
-				subject: this.formTitle.value,
-				description: this.formDescription.value,
-				assigned_to_id: assignee.ids.rm,
-			}
-		})
+        redmineFetch(`issues.json`, 'POST', {
+            issue: {
+                project_id: systems.redmine.projectId,
+                status_id: statuses.todo.rm,
+                subject: this.formTitle.value,
+                description: this.formDescription.value,
+                assigned_to_id: assignee.ids.rm,
+            }
+		}).then(data => {
+            this.formTitle.value = ''
+            this.formDescription.value = ''
+            this.formWrapper.style.display = 'none'
+            dispatch(addIssue(data.issue))
+        })
 	}
 
 	render () {
-		const { auth, boards, dispatch, issues } = this.props
+		const { auth, boards, issues } = this.props
 
 		return (
 			<CommonBoards>
@@ -77,11 +79,11 @@ class CommonTasks extends Component {
 				`}</style>
 				<ul className="task-list">
 					{boards && boards.map(board => (
-						<CommonBoard key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={issues} />
+						<CommonBoard key={board.label.name} board={board} tasks={issues} />
 					))}
 				</ul>
 
-				<Trash dispatch={dispatch} isTrash={true} />
+				<Trash isTrash={true} />
 			</CommonBoards>
 		)
 	}

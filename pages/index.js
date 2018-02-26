@@ -23,9 +23,10 @@ class Index extends Component {
 				<Layout>
 					<p style={{float: 'left'}}>
 						<button onClick={() => {
-							dispatch(fetchRmIssues(Users.getUserById(auth.user.id).ids.rm))
-							dispatch(setMergeRequests(Users.getUserById(auth.user.id).ids.gl))
-							dispatch(setMergeRequestAssignedToMe())
+							const user = Users.getUserById(auth.user.id)
+							dispatch(fetchRmIssues(user.ids.rm))
+							dispatch(setMergeRequests(user.ids.gl))
+							dispatch(setMergeRequestAssignedToMe(user.ids.gl))
 						}}>Refresh tasks
 						</button>
 					</p>

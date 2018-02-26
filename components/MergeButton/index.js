@@ -51,6 +51,7 @@ class MergeButton extends Component {
                     return
                 }
                 dispatch(addMergeRequest(data))
+                this.setState({show_dialog:false})
             })
     }
     _getMergeRequestId() {

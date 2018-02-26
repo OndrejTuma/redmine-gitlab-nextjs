@@ -8,10 +8,13 @@ import Users from '../../modules/Users'
 
 class FormUserList extends Component {
     componentDidMount() {
-        const {defaultValue, dispatch, assignee} = this.props
+        const {defaultValue, dispatch, assignee, user} = this.props
 
-        if (defaultValue && defaultValue != assignee.id) {
+        if (defaultValue && defaultValue.id != assignee.id) {
             dispatch(setFormIssueAssignee(defaultValue))
+        }
+        else if (!assignee) {
+            dispatch(setFormIssueAssignee(Users.getUserById(user.id)))
         }
     }
     render() {

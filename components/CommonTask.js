@@ -58,6 +58,10 @@ class CommonTask extends Component {
         const {dispatch, issue, task} = this.props
         const assignee = Users.getUserById(issue.assignee.id)
 
+        if (!assignee.ids) {
+            return console.error(`no assignee found for id ${issue.assignee.id}`, issue)
+        }
+
         dispatch(updateRedmineIssue(task, {
             issue: {
                 assigned_to_id: assignee.ids.rm,

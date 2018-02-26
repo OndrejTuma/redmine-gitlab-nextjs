@@ -55,15 +55,6 @@ export const setMergeRequestAssignedToMe = assignee_id => dispatch => gitlabFetc
 		dispatch({ type: 'SET_MR_FOR_ME', payload: data })
 	}
 })
-export const createMR = data => dispatch => REST.gl(
-	`projects/${systems.gitlab.projectId}/merge_requests`,
-	result => {
-		console.log('createMR callback', result);
-		return result
-	},
-	'POST',
-	data
-)
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
 export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })

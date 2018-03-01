@@ -93,6 +93,7 @@ export const setStatuses = () => dispatch => REST.rm(
 export const updateRedmineIssue = (issue, data) => dispatch => {
 	let { status_id, assigned_to_id } = data.issue
 
+console.log('updateRedmineIssue', status_id, assigned_to_id, data.issue, issue);
 	if (issue.id && issue.assigned_to) {
 		if (
 			(status_id && status_id === statuses.closed.rm) ||

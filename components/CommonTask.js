@@ -127,7 +127,7 @@ export default connect(state => ({
 
         const {dispatch, task} = props
         const result = monitor.getDropResult()
-        let issue = {}
+        let issue = {assigned_to_id: task.assigned_to.id}
         let status_id
 
         if (result.board) {

@@ -13,7 +13,7 @@ class MergeRequestBlock extends Component {
 		const {show_list} = this.state
 
 		return <div style={{float: 'right', textAlign: 'right'}}>
-			<p style={{cursor: 'pointer'}} onClick={() => this.setState({show_list: !show_list})}>
+			<p style={{cursor: mr_for_me.length ? 'pointer' : 'default'}} onClick={() => this.setState({show_list: !show_list})}>
 				MR assigned to me: <strong>{mr_for_me.length}</strong>
 			</p>
 			{show_list && <ul style={{listStyle: 'none'}}>

@@ -8,6 +8,7 @@ import {addMergeRequest} from '../../redux/actions'
 
 import Popup from '../Popup'
 import FormUserList from '../FormUserList/index'
+import FormComment from '../FormComment/index'
 
 class MergeButton extends Component {
     state = {
@@ -35,11 +36,12 @@ class MergeButton extends Component {
         }
     }
     _createMR() {
-        const {dispatch, forms: {issue: {assignee}}} = this.props
+        const {dispatch, issue: {assignee, comment}} = this.props
 
         gitlabFetch('merge_requests', 'POST', {
             id: systems.gitlab.projectId,
             assignee_id: assignee.ids.gl,
+            description: comment,
             source_branch: this._assembleBranchName(),
             target_branch: GIT.main_branch,
             title: this._assembleTitle(),
@@ -97,6 +99,8 @@ class MergeButton extends Component {
                     <button onClick={() => this._createMR()}>Create MR</button>
                 </p>
                 <FormUserList/>
+                <p style={{marginBottom:0}}>Description:</p>
+                <FormComment/>
             </Popup>}
         </div>
     }
@@ -104,5 +108,5 @@ class MergeButton extends Component {
 
 export default connect(state => ({
     mr_mine: state.gitlab.mr_mine,
-    forms: state.forms,
+    issue: state.forms.issue,
 }))(MergeButton)

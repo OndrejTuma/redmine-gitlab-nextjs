@@ -57,7 +57,7 @@ export const setMergeRequestAssignedToMe = assignee_id => dispatch => gitlabFetc
 })
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
-export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })
+export const isFetching = payload => dispatch => dispatch({ type: 'IS_FETCHING', payload})
 
 /* ============================= REDMINE REDUCER ACTIONS ============================= */
 export const fetchRmIssues = userId => dispatch => REST.rm(

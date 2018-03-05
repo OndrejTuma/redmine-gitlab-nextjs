@@ -1,10 +1,16 @@
-import {SET_FORM_ISSUE_ASSIGNEE, SET_FORM_ISSUE_COMMENT, SET_FORM_ISSUE_STATE} from '../actionTypes'
+import {
+    SET_FORM_ISSUE_ASSIGNEE,
+    SET_FORM_ISSUE_COMMENT,
+    SET_FORM_ISSUE_STATE,
+    SET_FORM_ISSUE_TITLE,
+} from '../actionTypes'
 
 export default (state = {
     issue: {
         assignee: null,
         state: null,
         comment: '',
+        title: '',
     },
 }, action) => {
     switch (action.type) {
@@ -13,6 +19,13 @@ export default (state = {
                 ...state, issue: {
                     ...state.issue,
                     assignee: action.payload
+                }
+            }
+        case SET_FORM_ISSUE_TITLE:
+            return {
+                ...state, issue: {
+                    ...state.issue,
+                    title: action.payload
                 }
             }
         case SET_FORM_ISSUE_COMMENT:

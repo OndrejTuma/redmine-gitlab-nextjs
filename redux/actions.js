@@ -7,6 +7,7 @@ import {
 	SET_FORM_ISSUE_ASSIGNEE,
     SET_FORM_ISSUE_COMMENT,
 	SET_FORM_ISSUE_STATE,
+    SET_FORM_ISSUE_TITLE,
 } from './actionTypes'
 
 /* ============================= AUTH REDUCER ACTIONS ============================= */
@@ -36,6 +37,8 @@ export const setFormIssueAssignee = payload => dispatch => dispatch({type: SET_F
 export const setFormIssueState = payload => dispatch => dispatch({type: SET_FORM_ISSUE_STATE, payload})
 export const setFormIssueComment = payload => dispatch => dispatch({type: SET_FORM_ISSUE_COMMENT, payload})
 export const resetFormIssueComment = () => dispatch => dispatch({type: SET_FORM_ISSUE_COMMENT, payload: ''})
+export const setFormIssueTitle = payload => dispatch => dispatch({type: SET_FORM_ISSUE_TITLE, payload})
+export const resetFormIssueTitle = () => dispatch => dispatch({type: SET_FORM_ISSUE_TITLE, payload: ''})
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
 export const setMergeRequests = author_id => dispatch => gitlabFetch('merge_requests', 'GET', {

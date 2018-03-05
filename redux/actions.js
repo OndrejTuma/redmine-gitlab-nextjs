@@ -1,41 +1,44 @@
 import { systems, statuses } from '../consts'
-import { REST, restFetch, gitlabFetch } from '../apiController'
+import {REST, restFetch, gitlabFetch, redmineFetch} from '../apiController'
 import Users from '../modules/Users'
 
+import {
+    ADD_MERGE_REQUEST,
+	SET_FORM_ISSUE_ASSIGNEE,
+    SET_FORM_ISSUE_COMMENT,
+	SET_FORM_ISSUE_STATE,
+    SET_FORM_ISSUE_TITLE,
+} from './actionTypes'
+
 /* ============================= AUTH REDUCER ACTIONS ============================= */
-export const logUser = (name, password, userId = "4") => dispatch => restFetch(`#`, data => {
-	if (data) {
-		dispatch({ type: 'AUTH_USER', payload: data })
-		dispatch({ type: 'LOG_IN' })
+export const logUser = (name, password, userId = 4) => dispatch => restFetch(`#`, data => {
+	const user = Users.getUserById(userId)
 
-		const user = Users.getUserById(data.user.id)
+	dispatch({ type: 'AUTH_USER', payload: data || {
+		id: userId,
+		glKey: 'JYU71ybJZx1HzRjG4eGC',
+		rmKey: '3135546c8e97570c179097d2b65738a20368bfc1',
+		tdKey: 'YzRjM2E5OTM4YWY2MjcwMDRmZjEzNGNmZDU4YmJmZWZlM2RmYzQ5ZjU3OTMyZTc4OThkOTRjZTMxMDA4ZjkyNA',
+	}})
 
-		dispatch(fetchRmIssues(user.ids.rm))
-		//dispatch(setBoards())
-	}
-	// !!! remove this dummy data
-	else {
-		dispatch({ type: 'AUTH_USER', payload: {
-			id: userId,
-			glKey: 'JYU71ybJZx1HzRjG4eGC',
-			rmKey: '3135546c8e97570c179097d2b65738a20368bfc1',
-			tdKey: 'YzRjM2E5OTM4YWY2MjcwMDRmZjEzNGNmZDU4YmJmZWZlM2RmYzQ5ZjU3OTMyZTc4OThkOTRjZTMxMDA4ZjkyNA',
-		}})
-		dispatch({ type: 'LOG_IN' })
-
-		const user = Users.getUserById(parseInt(userId))
-
-		dispatch(fetchRmIssues(user.ids.rm))
-		dispatch(setStatuses())
-		dispatch(setMergeRequests(user.ids.gl))
-		dispatch(setMergeRequestAssignedToMe())
-		//dispatch(setBoards())
-	}
+	dispatch({ type: 'LOG_IN' })
+	dispatch(fetchRmIssues(user.ids.rm))
+    dispatch(setStatuses())
+    dispatch(setMergeRequests(user.ids.gl))
+    dispatch(setMergeRequestAssignedToMe(user.ids.gl))
 }, 'PUT', {
 	name,
 	password,
 })
 export const logOutUser = () => dispatch => dispatch({ type: 'LOG_OUT' })
+
+/* ============================= FORMS REDUCER ACTIONS ============================== */
+export const setFormIssueAssignee = payload => dispatch => dispatch({type: SET_FORM_ISSUE_ASSIGNEE, payload})
+export const setFormIssueState = payload => dispatch => dispatch({type: SET_FORM_ISSUE_STATE, payload})
+export const setFormIssueComment = payload => dispatch => dispatch({type: SET_FORM_ISSUE_COMMENT, payload})
+export const resetFormIssueComment = () => dispatch => dispatch({type: SET_FORM_ISSUE_COMMENT, payload: ''})
+export const setFormIssueTitle = payload => dispatch => dispatch({type: SET_FORM_ISSUE_TITLE, payload})
+export const resetFormIssueTitle = () => dispatch => dispatch({type: SET_FORM_ISSUE_TITLE, payload: ''})
 
 /* ============================= GITLAB REDUCER ACTIONS ============================= */
 export const setMergeRequests = author_id => dispatch => gitlabFetch('merge_requests', 'GET', {
@@ -46,34 +49,18 @@ export const setMergeRequests = author_id => dispatch => gitlabFetch('merge_requ
 		dispatch({ type: 'SET_MY_MR', payload: data })
 	}
 })
-export const setMergeRequestAssignedToMe = () => dispatch => gitlabFetch('merge_requests', 'GET', {
+export const addMergeRequest = mr => dispatch => dispatch({type: ADD_MERGE_REQUEST, payload: mr})
+export const setMergeRequestAssignedToMe = assignee_id => dispatch => gitlabFetch('merge_requests', 'GET', {
 	state: 'opened',
-	scope: 'assigned-to-me',
+    assignee_id,
 }).then(data => {
 	if (data) {
 		dispatch({ type: 'SET_MR_FOR_ME', payload: data })
 	}
 })
-export const setBoards = () => dispatch => REST.gl(
-	`projects/${systems.gitlab.projectId}/boards`,
-	data => {
-		if (data && data.length) {
-			dispatch({ type: 'SET_BOARDS', payload: data[0].lists })
-		}
-	},
-)
-export const createMR = data => dispatch => REST.gl(
-	`projects/${systems.gitlab.projectId}/merge_requests`,
-	result => {
-		console.log('createMR callback', result);
-		return result
-	},
-	'POST',
-	data
-)
 
 /* ============================= GLOBAL REDUCER ACTIONS ============================= */
-export const isFetching = isFetching => dispatch => dispatch({ type: 'IS_FETCHING', payload: isFetching })
+export const isFetching = payload => dispatch => dispatch({ type: 'IS_FETCHING', payload})
 
 /* ============================= REDMINE REDUCER ACTIONS ============================= */
 export const fetchRmIssues = userId => dispatch => REST.rm(
@@ -106,7 +93,7 @@ export const setStatuses = () => dispatch => REST.rm(
 		}, [])
 	})
 )
-export const updateRedmineIssue = (issue, data, callback) => dispatch => {
+export const updateRedmineIssue = (issue, data) => dispatch => {
 	let { status_id, assigned_to_id } = data.issue
 
 	if (issue.id && issue.assigned_to) {
@@ -130,16 +117,7 @@ export const updateRedmineIssue = (issue, data, callback) => dispatch => {
 			})
 		}
 	}
-	return REST.rm(
-		`issues/${issue.id}.json`,
-		() => {
-			if (typeof callback === 'function') {
-				callback(data)
-			}
-		},
-		'PUT',
-		data
-	)
+	return redmineFetch(`issues/${issue.id}.json`, 'PUT', data)
 }
 /*
 export const resetAssignees = () => dispatch => dispatch({ type: 'RESET_ASSIGNEES' })

@@ -3,208 +3,157 @@ import {DragSource} from 'react-dnd'
 import Link from 'next/link'
 import getSlug from 'speakingurl'
 import copy from 'copy-to-clipboard'
-import { connect } from 'react-redux'
+import {connect} from 'react-redux'
 
-import {apiFetch, gitlabFetch, redmineFetch, Boards} from '../apiController'
-import {ItemTypes, statuses, systems, users, GIT} from '../consts'
+import {ItemTypes, statuses, systems} from '../consts'
 import Users from '../modules/Users'
 import Statuses from '../modules/Statuses'
 import {updateRedmineIssue} from '../redux/actions'
 
+import Popup from './Popup'
+import MergeButton from './MergeButton/index'
+import FormComment from './FormComment/index'
+import FormUserList from './FormUserList/index'
+import FormStateList from './FormStateList/index'
+
 
 class CommonTask extends Component {
-	state = {
-		merge_request_id: 0
-	}
+    state = {
+        edit_task: false,
+    }
 
-	componentDidMount() {
-		const {mr_mine} = this.props
-		const branch_name = this._assembleBranchName()
+    /**
+     * Copies text and notify user by setting target's innerHTML
+     * @param text string - text to copy to clipboard
+     * @param elm domNode
+     * @private
+     */
+    _copyElement(text, elm) {
+        copy(text)
 
-		if (!mr_mine || !mr_mine.length) {
-			return
-		}
+        if (elm) {
+            let prevClassName = elm.className
+            elm.className += ' highlighted'
+            setTimeout(() => {
+                elm.className = prevClassName
+            }, 1000)
+        }
+    }
 
-		mr_mine.map(mr => {
-			if (branch_name == mr.source_branch && mr.target_branch == GIT.main_branch) {
-				this.setState({merge_request_id: mr.iid})
-			}
-		})
-	}
+    /**
+     * Show edit form with proper values
+     * @private
+     */
+    _editTask(e) {
+        e.preventDefault()
+        this.setState({edit_task: true})
+    }
 
-	_assembleBranchName() {
-		const {task: {id, subject}} = this.props
+    /**
+     * updates Redmine task
+     * @param task
+     * @private
+     */
+    _updateTask() {
+        const {dispatch, issue, task} = this.props
+        const assignee = Users.getUserById(issue.assignee.id)
 
-		return `feature/${id}-${getSlug(subject)}`
-	}
-	_assembleTitle() {
-		const {task: {id, subject}} = this.props
+        if (!assignee.ids) {
+            return console.error(`no assignee found for id ${issue.assignee.id}`, issue)
+        }
 
-		return `#${id}: ${subject}`
-	}
+        dispatch(updateRedmineIssue(task, {
+            issue: {
+                assigned_to_id: assignee.ids.rm,
+                status_id: issue.state,
+                notes: issue.comment,
+            }
+        }))
 
-	/**
-	 * Copies text and notify user by setting target's innerHTML
-	 * @param text string - text to copy to clipboard
-	 * @param elm domNode
-	 * @private
-	 */
-	_copyElement(text, elm) {
-		copy(text)
+        this.setState({edit_task: false})
+    }
 
-		if (elm) {
-			let prevClassName = elm.className
-			elm.className += ' highlighted'
-			setTimeout(() => {
-				elm.className = prevClassName
-			}, 1000)
-		}
-	}
+    render() {
+        const {board: {id: boardId}, task, connectDragSource} = this.props
+        const {edit_task} = this.state
 
-	/**
-	 * Show edit form with proper values
-	 * @private
-	 */
-	_editTask() {
-		let {board: {id: boardId}, userId} = this.props
+        return connectDragSource(
+            <li>
+                <a href="#" onClick={e => this._editTask(e)}>{task.subject}</a>
+                <small>({task.id})</small>
+                <br/>
+                <img className="icon" title="Copy branch name" src="../static/images/git.png"
+                     onClick={e => this._copyElement(`feature/${task.id}-${getSlug(task.subject)}`, e.target)}/>
+                <img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png"
+                     onClick={e => this._copyElement(`${task.subject} - ${systems.redmine.url}issues/${task.id}`, e.target)}/>
+                <a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${task.id}`}
+                   target="_blank">
+                    <img src="../static/images/rm.png" alt="Redmine"/>
+                </a>
+                <br/>
+                <MergeButton task={task}/>
+                <Link as={`/task/${task.id}`} href={`/task?id=${task.id}`}><a style={{marginRight: 10}}>rm</a></Link>
 
-		this.formWrapper.style.display = 'block'
-		this.formState.value = boardId
-		this.formAssignedTo.value = userId
-	}
-
-	/**
-	 * updates Redmine task
-	 * @param task
-	 * @private
-	 */
-	_updateTask(task) {
-		const {dispatch} = this.props
-		const assignee = Users.getUserById(this.formAssignedTo.value)
-		const status = Statuses.getStatusByGlId(this.formState.value)
-
-		dispatch(updateRedmineIssue(task, {
-			issue: {
-				assigned_to_id: assignee.ids.rm,
-				status_id: status.rm,
-				notes: this.formComment.value,
-			}
-		}))
-
-		this.formWrapper.style.display = 'none'
-	}
-
-	render() {
-		const {boards, task, connectDragSource, userId} = this.props
-		const {merge_request_id} = this.state
-
-		return connectDragSource(
-			<li>
-				<a href="#" onClick={e => {
-					e.preventDefault()
-					this._editTask(task)
-				}}>{task.subject}</a>
-				<small>({task.id})</small>
-				<br/>
-				<img className="icon" title="Copy branch name" src="../static/images/git.png"
-					 onClick={e => this._copyElement(`feature/${task.id}-${getSlug(task.subject)}`, e.target)}/>
-				<img className="icon" title="Copy TimeDoctor task" src="../static/images/td.png"
-					 onClick={e => this._copyElement(`${task.subject} - ${systems.redmine.url}issues/${task.id}`, e.target)}/>
-				<a className="icon" title="Go to Redmine task" href={`${systems.redmine.url}issues/${task.id}`}
-				   target="_blank">
-					<img src="../static/images/rm.png" alt="Redmine"/>
-				</a>
-				<br/>
-				<button style={{marginRight: 10}} onClick={() => {
-					if (merge_request_id) {
-						return window.open(`${systems.gitlab.mergeRequestUrl}${merge_request_id}`)
-					}
-
-					if (!confirm(`Máš rebased ${GIT.main_branch}?`)) {
-						return
-					}
-
-					gitlabFetch('merge_requests', 'POST', {
-						id: systems.gitlab.projectId,
-						source_branch: this._assembleBranchName(),
-						target_branch: GIT.main_branch,
-						title: this._assembleTitle(),
-						remove_source_branch: true,
-						labels: `Frontend`
-					})
-						.then(data => {
-							if (!data || !data.iid) {
-								return
-							}
-							this.setState({merge_request_id: data.iid})
-						})
-				}}>{merge_request_id ? 'view merge request' : 'merge to stage'}</button>
-				<Link as={`/task/${task.id}`} href={`/task?id=${task.id}`}><a style={{marginRight: 10}}>rm</a></Link>
-
-				<div ref={elm => this.formWrapper = elm} style={{display: 'none'}}>
-					<p style={{float: `right`}}>
-						<button onClick={() => this.formWrapper.style.display = 'none'}>x</button>
-					</p>
-					<p>Set state: <select ref={elm => this.formState = elm}>
-						{boards && boards.map((board, i) => (
-							<option key={i} value={board.id}>{board.label.name}</option>
-						))}
-					</select></p>
-					<p>Assign to: <select ref={elm => this.formAssignedTo = elm} defaultValue={userId}>
-						{users && users.map(person => (
-							<option key={person.id} value={person.id}>{person.name}</option>
-						))}
-					</select></p>
-					<textarea ref={elm => this.formComment = elm}></textarea>
-					<br/>
-					<button onClick={() => this._updateTask(task)}>Update task</button>
-				</div>
-			</li>
-		)
-	}
+                {edit_task && <Popup>
+                    <span onClick={() => this.setState({edit_task: false})} style={{
+                        cursor:'pointer',
+                        fontSize:'1.5em',
+                        position:'absolute',
+                        right: 10,
+                        top: 5,
+                    }}>&times;</span>
+                    <FormStateList defaultValue={Statuses.getStatusByGlId(boardId).rm}/>
+                    <FormUserList/>
+                    <FormComment/>
+                    <br/>
+                    <button onClick={() => this._updateTask()}>Update task</button>
+                </Popup>}
+            </li>
+        )
+    }
 }
 
 export default connect(state => ({
-	mr_mine: state.gitlab.mr_mine,
+    issue: state.forms.issue,
 }))(DragSource(ItemTypes.BOARD, {
-	beginDrag() {
-		//console.log('beginDrag',props);
-		return {};
-	},
-	endDrag(props, monitor) {
-		if (monitor.didDrop()) {
-			const {dispatch, task} = props
-			const result = monitor.getDropResult()
-			let status_id
-			let data = {
-				issue: {}
-			}
+    beginDrag() {
+        //console.log('beginDrag',props);
+        return {};
+    },
+    endDrag(props, monitor) {
+        if (!monitor.didDrop()) {
+            return
+        }
 
-			if (result.board) {
-				status_id = Statuses.getStatusByGlId(result.board.id).rm
-			}
-			else if (result.isTrash) {
-				status_id = statuses.closed.rm
-			}
-			else {
-				status_id = task.status.id
-			}
+        const {dispatch, task} = props
+        const result = monitor.getDropResult()
+        let issue = {assigned_to_id: task.assigned_to.id}
+        let status_id
 
-			data.issue.status_id = status_id
+        if (result.board) {
+            status_id = Statuses.getStatusByGlId(result.board.id).rm
+        }
+        else if (result.isTrash) {
+            status_id = statuses.closed.rm
+        }
 
-			if ([statuses.test.rm].indexOf(status_id) >= 0) {
-				data.issue.done_ratio = 80
-			}
-			if ([statuses.deploy.rm, statuses.ready.rm].indexOf(status_id) >= 0) {
-				data.issue.done_ratio = 100
-			}
+        // if we dropped task on the same board again, nothing happens
+        if (status_id === task.status.id) {
+            return
+        }
 
-			console.log(result, status_id);
+        issue.status_id = status_id
 
-			dispatch(updateRedmineIssue(task, data))
-		}
-	},
+        if ([statuses.test.rm].indexOf(status_id) >= 0) {
+            issue.done_ratio = 80
+        }
+        if ([statuses.deploy.rm, statuses.ready.rm].indexOf(status_id) >= 0) {
+            issue.done_ratio = 100
+        }
+
+        dispatch(updateRedmineIssue(task, {issue}))
+    },
 }, (connect, monitor) => ({
-	connectDragSource: connect.dragSource(),
-	isDragging: monitor.isDragging()
+    connectDragSource: connect.dragSource(),
+    isDragging: monitor.isDragging()
 }))(CommonTask))

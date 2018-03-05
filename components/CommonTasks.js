@@ -1,60 +1,20 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { REST } from '../apiController'
-import Users from '../modules/Users'
 import CommonBoard from './CommonBoard'
 import CommonBoards from './CommonBoards'
 import Trash from './Trash'
 
-import { systems, statuses, users } from '../consts'
-import { addIssue } from '../redux/actions'
+import NewTask from './NewTask/index'
 
 class CommonTasks extends Component {
-	/**
-	 * adds issue in Redmine and GitLab, fill name, description (and labels for GitLab) and assign it to current user
-	 */
-	newCommonTask () {
-		const { dispatch, auth } = this.props
-		const assignee = Users.getUserById(auth.user.id)
-
-		REST.rm(`issues.json`, data => {
-			dispatch(addIssue(data.issue))
-			this.formWrapper.style.display = 'none'
-		}, 'POST', {
-			issue: {
-				project_id: systems.redmine.projectId,
-				status_id: statuses.todo.rm,
-				subject: this.formTitle.value,
-				description: this.formDescription.value,
-				assigned_to_id: assignee.ids.rm,
-			}
-		})
-	}
-
 	render () {
-		const { auth, boards, dispatch, issues } = this.props
+		const { auth, boards, issues } = this.props
 
 		return (
 			<CommonBoards>
-				<h2>Your tasks:</h2>
-				<button onClick={() => {
-					this.formWrapper.style.display = 'block'
-					this.newAssignee.value = auth.user.id
-				}}>New task</button>
-				<div ref={elm => this.formWrapper = elm} style={{ display: 'none', clear: 'both' }}>
-					<button style={{ float: 'right' }} onClick={() => this.formWrapper.style.display = 'none'}>x</button>
-					<input type="text" ref={elm => this.formTitle = elm} placeholder={`Issue title`} />
-					<br/>
-					<textarea ref={elm => this.formDescription = elm} placeholder={`Issue description`} ></textarea>
-					<br/>
-					<p>Assign to: <select ref={elm => this.newAssignee = elm} defaultValue={auth.user.id}>
-						{users && users.map((person) => (
-							<option key={person.id} value={person.id}>{person.name}</option>
-						))}
-					</select></p>
-					<button onClick={() => this.newCommonTask()}>Create</button>
-				</div>
+				<NewTask/>
+
 				<style>{`
 					.task-list { display: table; list-style: none; padding-left: 0; table-layout: fixed; width: 100%; }
 					.task-list li { display: table-cell; vertical-align: top; }
@@ -77,11 +37,11 @@ class CommonTasks extends Component {
 				`}</style>
 				<ul className="task-list">
 					{boards && boards.map(board => (
-						<CommonBoard key={board.label.name} dispatch={dispatch} userId={auth.user.id} name={board.label.name} boards={boards} board={board} tasks={issues} />
+						<CommonBoard key={board.label.name} board={board} tasks={issues} />
 					))}
 				</ul>
 
-				<Trash dispatch={dispatch} isTrash={true} />
+				<Trash isTrash={true} />
 			</CommonBoards>
 		)
 	}

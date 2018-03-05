@@ -3,16 +3,15 @@ import { createStore, applyMiddleware } from 'redux'
 import { createLogger } from 'redux-logger'
 import thunkMiddleware from 'redux-thunk'
 
-import reducers from './redux/reducers'
+import stores from './redux/stores'
 
 const loggerMiddleware = createLogger()
 const initStore = (initialState) => {
 	return createStore(
-		reducers,
+        stores,
 		initialState,
 		applyMiddleware(thunkMiddleware, loggerMiddleware),
 	)
 }
-
 
 export const nextConnect = nextConnectRedux(initStore)

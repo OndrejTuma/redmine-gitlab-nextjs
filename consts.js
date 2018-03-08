@@ -152,5 +152,5 @@ export const ItemTypes = {
 	BOARD: 'board'
 }
 export const GIT = {
-	main_branch: 'staging'
+	main_branch: 'master'
 }

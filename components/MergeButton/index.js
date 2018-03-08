@@ -85,7 +85,7 @@ class MergeButton extends Component {
         const mrId = this._getMergeRequestId()
 
         return <div>
-            <button style={{marginRight: 10}} onClick={() => this._click()}>{mrId ? 'view merge request' : 'merge to stage'}</button>
+            <button style={{marginRight: 10}} onClick={() => this._click()}>{mrId ? 'view merge request' : `merge to ${GIT.main_branch}`}</button>
 
             {show_dialog && <Popup>
                 <a href="#" style={{

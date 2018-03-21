@@ -95,12 +95,11 @@ class MergeButton extends Component {
                     textDecoration:'none',
                     top: 5,
                 }} onClick={() => this.setState({show_dialog:false})}>&times;</a>
-                <p style={{float:'right'}}>
-                    <button onClick={() => this._createMR()}>Create MR</button>
-                </p>
                 <FormUserList/>
                 <p style={{marginBottom:0}}>Description:</p>
                 <FormComment/>
+                <br/>
+                <button onClick={() => this._createMR()}>Create MR</button>
             </Popup>}
         </div>
     }

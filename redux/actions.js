@@ -22,7 +22,7 @@ export const logUser = (name, password, userId = 4) => dispatch => restFetch(`#`
 	}})
 
 	dispatch({ type: 'LOG_IN' })
-	dispatch(fetchRmIssues(user.ids.rm))
+	dispatch(setRedmineIssuesForUser(user.ids.rm))
     dispatch(setStatuses())
     dispatch(setMergeRequests(user.ids.gl))
     dispatch(setMergeRequestAssignedToMe(user.ids.gl))
@@ -63,21 +63,17 @@ export const setMergeRequestAssignedToMe = assignee_id => dispatch => gitlabFetc
 export const isFetching = payload => dispatch => dispatch({ type: 'IS_FETCHING', payload})
 
 /* ============================= REDMINE REDUCER ACTIONS ============================= */
-export const fetchRmIssues = userId => dispatch => REST.rm(
-	`issues.json`,
-	response => dispatch({ type: 'SET_ISSUES', payload: response.issues }),
-	'GET',
-	{ assigned_to_id: userId }
-)
 export const setAssignees = assignees => dispatch => dispatch({ type: 'SET_ASSIGNEES', payload: assignees })
 export const addAssignee = assignee => dispatch => dispatch({ type: 'ADD_ASSIGNEE', payload: assignee })
 export const addIssue = issue => dispatch => dispatch({ type: 'ADD_REDMINE_ISSUE', payload: issue })
 export const fetchSingleIssue = (id, callback) => dispatch => REST.rm(
 	`issues/${id}.json?include=journals,attachments`,
 	data => {
-		dispatch({ type: 'SET_ISSUE', payload: data.issue })
-		if (typeof callback === 'function') {
-			callback(data)
+		if (data && data.issue) {
+            dispatch({ type: 'SET_ISSUE', payload: data.issue })
+            if (typeof callback === 'function') {
+                callback(data)
+            }
 		}
 	}
 )
@@ -93,6 +89,12 @@ export const setStatuses = () => dispatch => REST.rm(
 		}, [])
 	})
 )
+
+
+export const setRedmineIssuesForUser = assigned_to_id => dispatch => {
+    redmineFetch('issues.json', 'GET', { assigned_to_id, include: 'tag' })
+		.then(data => dispatch({ type: 'SET_ISSUES', payload: data.issues }))
+};
 export const updateRedmineIssue = (issue, data) => dispatch => {
 	let { status_id, assigned_to_id } = data.issue
 

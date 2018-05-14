@@ -10,7 +10,7 @@ import Users from '../modules/Users'
 import {users} from '../consts'
 import {GitLab, Redmine} from '../apiController'
 import {nextConnect} from '../store'
-import {fetchRmIssues, logUser, setMergeRequests, setMergeRequestAssignedToMe} from '../redux/actions'
+import {setRedmineIssuesForUser, logUser, setMergeRequests, setMergeRequestAssignedToMe} from '../redux/actions'
 
 //import simpleGit from 'simple-git'
 
@@ -24,7 +24,7 @@ class Index extends Component {
 					<p style={{float: 'left'}}>
 						<button onClick={() => {
 							const user = Users.getUserById(auth.user.id)
-							dispatch(fetchRmIssues(user.ids.rm))
+							dispatch(setRedmineIssuesForUser(user.ids.rm))
 							dispatch(setMergeRequests(user.ids.gl))
 							dispatch(setMergeRequestAssignedToMe(user.ids.gl))
 						}}>Refresh tasks
